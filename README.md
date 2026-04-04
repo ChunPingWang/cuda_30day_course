@@ -24,25 +24,52 @@
 
 ## 編譯與執行
 
-### Windows（Developer Command Prompt）
+### Windows
 
-**環境設定：** 開啟 Developer Command Prompt for VS 2022，或手動載入：
+**環境設定：** 開啟 Developer Command Prompt for VS 2022，或手動載入環境變數：
+
+**Command Prompt（cmd）：**
 
 ```cmd
 call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 ```
 
+**PowerShell：**
+
+```powershell
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64
+```
+
+> 如果安裝的是 Build Tools 版本，將路徑中的 `Community` 替換為 `BuildTools`。
+
 **編譯單一檔案：**
+
+Command Prompt：
 
 ```cmd
 nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -o hello_world.exe week1\day2\hello_world.cu
 hello_world.exe
 ```
 
+PowerShell：
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -o hello_world.exe week1/day2/hello_world.cu
+.\hello_world.exe
+```
+
 **一次編譯所有檔案：**
+
+Command Prompt：
 
 ```cmd
 compile_all.bat
+```
+
+PowerShell：
+
+```powershell
+.\compile_all.bat
 ```
 
 > `-allow-unsupported-compiler`：允許較新版本的 MSVC 編譯器。
