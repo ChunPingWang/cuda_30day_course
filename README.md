@@ -19,28 +19,36 @@
 
 | 環境 | 編譯器 | 額外需求 |
 |------|--------|----------|
-| **Windows** | nvcc 12.8 | Visual Studio 2022+ Build Tools |
+| **Windows** | nvcc 12.8 | Visual Studio 2026（v18）或 2022+（含 C++ 桌面開發工作負載） |
 | **WSL (Ubuntu)** | nvcc 12.8 | `build-essential`, `cuda-toolkit-12-8` |
 
 ## 編譯與執行
 
 ### Windows
 
-**環境設定：** 開啟 Developer Command Prompt for VS 2022，或手動載入環境變數：
+**環境設定：** 開啟 Developer Command Prompt，或手動載入環境變數：
 
 **Command Prompt（cmd）：**
 
 ```cmd
+rem Visual Studio 2026（v18）
+call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+
+rem Visual Studio 2022（v17）
 call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 ```
 
 **PowerShell：**
 
 ```powershell
+# Visual Studio 2026（v18）
+& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64
+
+# Visual Studio 2022（v17）
 & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64
 ```
 
-> 如果安裝的是 Build Tools 版本，將路徑中的 `Community` 替換為 `BuildTools`。
+> 請依照實際安裝的版本選擇對應路徑。如果安裝的是 Build Tools 版本，將 `Community` 替換為 `BuildTools`。
 
 **編譯單一檔案：**
 
