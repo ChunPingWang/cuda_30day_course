@@ -42,7 +42,7 @@ void queryDevices() {
             if (i != j) {
                 int canAccess;
                 cudaDeviceCanAccessPeer(&canAccess, i, j);
-                printf("  P2P 到裝置 %d: %s\n", j, canAccess ? "支援" : "不支援");
+                printf("  P2P to device %d: %s\n", j, canAccess ? "Supported" : "Not supported");
             }
         }
         printf("\n");

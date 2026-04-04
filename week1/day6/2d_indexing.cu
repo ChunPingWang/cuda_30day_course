@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 /**
- * 展示 2D 索引的核心函數
+ * Kernel to demonstrate 2D indexing
  */
 __global__ void show2DIndex(int width, int height) {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -14,7 +14,7 @@ __global__ void show2DIndex(int width, int height) {
 }
 
 /**
- * 2D 矩陣填充：每個元素 = x + y * 10
+ * 2D matrix fill: each element = x + y * 10
  */
 __global__ void fill2DMatrix(int *matrix, int width, int height) {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -27,7 +27,7 @@ __global__ void fill2DMatrix(int *matrix, int width, int height) {
 }
 
 /**
- * 矩陣轉置
+ * Matrix transpose
  */
 __global__ void transpose(int *input, int *output, int width, int height) {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -41,7 +41,7 @@ __global__ void transpose(int *input, int *output, int width, int height) {
 }
 
 /**
- * 印出矩陣
+ * Print matrix
  */
 void printMatrix(int *matrix, int width, int height, const char *name) {
     printf("%s (%d x %d):\n", name, width, height);
@@ -57,22 +57,22 @@ void printMatrix(int *matrix, int width, int height, const char *name) {
 
 int main() {
     printf("========================================\n");
-    printf("    2D 索引與矩陣操作示範\n");
+    printf("    2D Indexing and Matrix Operations\n");
     printf("========================================\n\n");
 
-    // ========== 示範 1：2D 索引 ==========
-    printf("示範 1: 2D 索引映射\n");
-    printf("矩陣大小: 4 x 3\n");
-    printf("Block 大小: 2 x 2\n\n");
+    // ========== Demo 1: 2D Indexing ==========
+    printf("Demo 1: 2D Index Mapping\n");
+    printf("Matrix size: 4 x 3\n");
+    printf("Block size: 2 x 2\n\n");
 
     dim3 threadsPerBlock(2, 2);
-    dim3 numBlocks(2, 2);  // (4/2, 3/2 向上取整)
+    dim3 numBlocks(2, 2);  // (4/2, ceil(3/2))
 
     show2DIndex<<<numBlocks, threadsPerBlock>>>(4, 3);
     cudaDeviceSynchronize();
 
-    // ========== 示範 2：2D 矩陣填充 ==========
-    printf("\n示範 2: 使用 2D 索引填充矩陣\n");
+    // ========== Demo 2: 2D Matrix Fill ==========
+    printf("\nDemo 2: Fill matrix using 2D indexing\n");
 
     const int width = 5;
     const int height = 4;
@@ -87,10 +87,10 @@ int main() {
     fill2DMatrix<<<blocks, threads>>>(d_matrix, width, height);
     cudaDeviceSynchronize();
 
-    printMatrix(d_matrix, width, height, "填充後的矩陣 (value = x + y*10)");
+    printMatrix(d_matrix, width, height, "Filled matrix (value = x + y*10)");
 
-    // ========== 示範 3：矩陣轉置 ==========
-    printf("示範 3: 矩陣轉置\n");
+    // ========== Demo 3: Matrix Transpose ==========
+    printf("Demo 3: Matrix Transpose\n");
 
     int *d_transposed;
     cudaMallocManaged(&d_transposed, bytes);
@@ -98,23 +98,23 @@ int main() {
     transpose<<<blocks, threads>>>(d_matrix, d_transposed, width, height);
     cudaDeviceSynchronize();
 
-    printMatrix(d_transposed, height, width, "轉置後的矩陣");
+    printMatrix(d_transposed, height, width, "Transposed matrix");
 
-    // 驗證轉置結果
-    printf("驗證轉置結果：\n");
-    printf("  原矩陣 (1,2) = %d\n", d_matrix[2 * width + 1]);
-    printf("  轉置後 (2,1) = %d\n", d_transposed[1 * height + 2]);
-    printf("  應該相等: %s\n\n",
-           d_matrix[2 * width + 1] == d_transposed[1 * height + 2] ? "" : "");
+    // Verify transpose result
+    printf("Verify transpose result:\n");
+    printf("  Original (1,2) = %d\n", d_matrix[2 * width + 1]);
+    printf("  Transposed (2,1) = %d\n", d_transposed[1 * height + 2]);
+    printf("  Should be equal: %s\n\n",
+           d_matrix[2 * width + 1] == d_transposed[1 * height + 2] ? "YES" : "NO");
 
-    // ========== 清理 ==========
+    // ========== Cleanup ==========
     cudaFree(d_matrix);
     cudaFree(d_transposed);
 
     printf("========================================\n");
-    printf("💡 2D 索引公式：\n");
+    printf("2D Index Formula:\n");
     printf("   idx = y * width + x\n");
-    printf("   (行優先，Row-Major Order)\n");
+    printf("   (Row-Major Order)\n");
     printf("========================================\n");
 
     return 0;

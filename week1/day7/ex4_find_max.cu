@@ -3,76 +3,37 @@
 #include <float.h>
 
 /**
- * 練習 4：找出陣列最大值
+ * Exercise 4: Find Maximum Value in Array
  *
- * 這是一個簡化版本：
- * - 將陣列分成多個區段
- * - 每個 Block 找出其區段的最大值
- * - CPU 找出所有區段最大值中的最大值
+ * This is a simplified version:
+ * - Divide array into segments
+ * - Each Block finds the maximum of its segment
+ * - CPU finds maximum among all segment maximums
  *
- * 這不是最高效的方法（第三週會學習平行歸約）
- * 但它展示了基本的概念
+ * This is not the most efficient method (Parallel Reduction in Week 3)
+ * but it demonstrates the basic concept
  */
 
 #define THREADS_PER_BLOCK 256
 
-/**
- * 每個 Block 找出一個區段的最大值
- * 使用 atomicMax 來更新共享的最大值
- */
-__global__ void findBlockMax(float *input, float *blockMaxes, int n) {
-    __shared__ float sharedMax;
-
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    // 第一個執行緒初始化共享記憶體
-    if (threadIdx.x == 0) {
-        sharedMax = -FLT_MAX;
-    }
-    __syncthreads();
-
-    // 每個執行緒檢查自己的元素
-    if (idx < n) {
-        // 使用原子操作更新最大值
-        atomicMax((int*)&sharedMax, __float_as_int(input[idx]));
-    }
-    __syncthreads();
-
-    // 第一個執行緒儲存結果
-    if (threadIdx.x == 0) {
-        blockMaxes[blockIdx.x] = sharedMax;
-    }
-}
-
-/**
- * 簡化版本：每個執行緒處理一個元素，寫入是否為局部最大
- */
-__global__ void compareElements(float *input, float *output, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < n) {
-        output[idx] = input[idx];
-    }
-}
-
 int main() {
     printf("========================================\n");
-    printf("    練習 4：找出陣列最大值\n");
+    printf("    Exercise 4: Find Maximum Value\n");
     printf("========================================\n\n");
 
     const int n = 1000;
     size_t bytes = n * sizeof(float);
 
-    // 使用統一記憶體
+    // Use unified memory
     float *data;
     cudaMallocManaged(&data, bytes);
 
-    // 初始化隨機資料
-    srand(42);  // 固定種子以便重現
+    // Initialize random data
+    srand(42);  // Fixed seed for reproducibility
     float cpuMax = -FLT_MAX;
     int maxIndex = 0;
 
-    printf("生成 %d 個隨機數...\n", n);
+    printf("Generating %d random numbers...\n", n);
     for (int i = 0; i < n; i++) {
         data[i] = (float)(rand() % 10000) / 100.0f;  // 0.00 ~ 99.99
         if (data[i] > cpuMax) {
@@ -81,14 +42,14 @@ int main() {
         }
     }
 
-    printf("前 10 個元素: [ ");
+    printf("First 10 elements: [ ");
     for (int i = 0; i < 10; i++) {
         printf("%.2f ", data[i]);
     }
     printf("...]\n\n");
 
-    // GPU 計算（簡化版：複製到 GPU 並在 CPU 找最大值）
-    // 這裡展示的是混合方法
+    // GPU computation (simplified version: copy to GPU and find max on CPU)
+    // This demonstrates the hybrid approach
 
     int threadsPerBlock = THREADS_PER_BLOCK;
     int blocks = (n + threadsPerBlock - 1) / threadsPerBlock;
@@ -96,19 +57,20 @@ int main() {
     float *blockMaxes;
     cudaMallocManaged(&blockMaxes, blocks * sizeof(float));
 
-    // 初始化 blockMaxes
+    // Initialize blockMaxes
     for (int i = 0; i < blocks; i++) {
         blockMaxes[i] = -FLT_MAX;
     }
 
-    // 每個 block 處理一部分
-    // 簡化版：我們直接在 CPU 上比較
+    // Each block processes a portion
+    // Simplified version: we compare directly on CPU
     cudaDeviceSynchronize();
 
-    // 每個 block 的最大值
+    // Find max for each block
     for (int b = 0; b < blocks; b++) {
         int start = b * threadsPerBlock;
-        int end = min(start + threadsPerBlock, n);
+        int end = start + threadsPerBlock;
+        if (end > n) end = n;
         float localMax = -FLT_MAX;
         for (int i = start; i < end; i++) {
             if (data[i] > localMax) {
@@ -118,7 +80,7 @@ int main() {
         blockMaxes[b] = localMax;
     }
 
-    // 找出所有 block 最大值中的最大值
+    // Find maximum among all block maxes
     float gpuMax = -FLT_MAX;
     for (int i = 0; i < blocks; i++) {
         if (blockMaxes[i] > gpuMax) {
@@ -126,18 +88,18 @@ int main() {
         }
     }
 
-    printf("結果：\n");
-    printf("  CPU 計算的最大值: %.2f (索引 %d)\n", cpuMax, maxIndex);
-    printf("  GPU 計算的最大值: %.2f\n", gpuMax);
-    printf("  結果驗證: %s\n\n", (cpuMax == gpuMax) ? " 正確" : " 錯誤");
+    printf("Results:\n");
+    printf("  CPU computed max: %.2f (index %d)\n", cpuMax, maxIndex);
+    printf("  GPU computed max: %.2f\n", gpuMax);
+    printf("  Result verification: %s\n\n", (cpuMax == gpuMax) ? "CORRECT" : "ERROR");
 
-    // 釋放記憶體
+    // Free memory
     cudaFree(data);
     cudaFree(blockMaxes);
 
-    printf("💡 注意：這是一個簡化版本。\n");
-    printf("   第三週會學習使用平行歸約（Parallel Reduction）\n");
-    printf("   來高效地在 GPU 上完成這類操作。\n");
+    printf("Note: This is a simplified version.\n");
+    printf("In Week 3, we will learn to use Parallel Reduction\n");
+    printf("to efficiently perform such operations on GPU.\n");
 
     return 0;
 }

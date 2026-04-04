@@ -1,0 +1,49 @@
+# 編譯產出
+*.exe
+*.exp
+*.lib
+*.o
+*.obj
+
+# WSL/Linux 編譯產出（無副檔名的二進位檔）
+week*/day*/device_query
+week*/day*/hello_world
+week*/day*/hello_advanced
+week*/day*/thread_index
+week*/day*/array_index
+week*/day*/vector_add
+week*/day*/vector_add_benchmark
+week*/day*/memory_basics
+week*/day*/unified_memory
+week*/day*/2d_indexing
+week*/day*/stride_pattern
+week*/day*/ex1_square
+week*/day*/ex2_dot_product
+week*/day*/ex3_matrix_scale
+week*/day*/ex4_find_max
+week*/day*/warp_info
+week*/day*/divergence_demo
+week*/day*/vector_add_optimized
+week*/day*/matrix_mul_basic
+week*/day*/matrix_mul_tiled
+week*/day*/atomic_ops
+week*/day*/error_handling
+week*/day*/matrix_mul_complete
+week*/day*/memory_coalescing
+week*/day*/constant_memory
+week*/day*/scan_basic
+week*/day*/reduction_basic
+week*/day*/histogram
+week*/day*/bitonic_sort
+week*/day*/image_processing
+week*/day*/image_filters
+week*/day*/streams
+week*/day*/multi_gpu
+week*/day*/unified_memory_advanced
+
+# 暫存檔
+temp_compile.bat
+*.pdb
+
+# Claude Code
+.claude/

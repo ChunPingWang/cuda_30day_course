@@ -1,8 +1,8 @@
 #include <stdio.h>
 
 /**
- * 練習 1：向量平方
- * 計算 B[i] = A[i] * A[i]
+ * Exercise 1: Vector Square
+ * Compute B[i] = A[i] * A[i]
  */
 
 __global__ void vectorSquare(float *a, float *b, int n) {
@@ -15,18 +15,18 @@ __global__ void vectorSquare(float *a, float *b, int n) {
 
 int main() {
     printf("========================================\n");
-    printf("    練習 1：向量平方\n");
+    printf("    Exercise 1: Vector Square\n");
     printf("========================================\n\n");
 
     const int n = 10;
     size_t bytes = n * sizeof(float);
 
-    // 使用統一記憶體
+    // Use unified memory
     float *a, *b;
     cudaMallocManaged(&a, bytes);
     cudaMallocManaged(&b, bytes);
 
-    // 初始化
+    // Initialize
     printf("A = [ ");
     for (int i = 0; i < n; i++) {
         a[i] = (float)(i + 1);
@@ -34,21 +34,21 @@ int main() {
     }
     printf("]\n\n");
 
-    // 執行核心函數
+    // Execute kernel
     int threadsPerBlock = 256;
     int blocks = (n + threadsPerBlock - 1) / threadsPerBlock;
 
     vectorSquare<<<blocks, threadsPerBlock>>>(a, b, n);
     cudaDeviceSynchronize();
 
-    // 顯示結果
-    printf("B = A² = [ ");
+    // Display results
+    printf("B = A^2 = [ ");
     for (int i = 0; i < n; i++) {
         printf("%.0f ", b[i]);
     }
     printf("]\n\n");
 
-    // 驗證
+    // Verify
     bool correct = true;
     for (int i = 0; i < n; i++) {
         if (b[i] != a[i] * a[i]) {
@@ -56,9 +56,9 @@ int main() {
             break;
         }
     }
-    printf("結果驗證: %s\n", correct ? " 正確" : " 錯誤");
+    printf("Result verification: %s\n", correct ? "CORRECT" : "ERROR");
 
-    // 釋放記憶體
+    // Free memory
     cudaFree(a);
     cudaFree(b);
 

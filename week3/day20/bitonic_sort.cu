@@ -135,7 +135,7 @@ int main() {
         h_small[i] = rand() % 100;
     }
 
-    printArray("排序前", h_small, smallN, 16);
+    printArray("Before sort", h_small, smallN, 16);
 
     int *d_small;
     cudaMalloc(&d_small, smallN * sizeof(int));
@@ -144,8 +144,8 @@ int main() {
     bitonicSortHost(d_small, smallN);
 
     cudaMemcpy(h_small, d_small, smallN * sizeof(int), cudaMemcpyDeviceToHost);
-    printArray("排序後", h_small, smallN, 16);
-    printf("驗證: %s\n\n", isSorted(h_small, smallN) ? "通過" : "失敗");
+    printArray("After sort", h_small, smallN, 16);
+    printf("Verify: %s\n\n", isSorted(h_small, smallN) ? "PASS" : "FAIL");
 
     cudaFree(d_small);
 

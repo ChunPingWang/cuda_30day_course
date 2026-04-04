@@ -117,8 +117,8 @@ int main() {
     cudaDeviceProp prop;
     cudaGetDeviceProperties(&prop, 0);
     printf("GPU: %s\n", prop.name);
-    printf("同時複製和執行: %s\n",
-           prop.deviceOverlap ? "支援" : "不支援");
+    printf("Concurrent copy and execute: %s\n",
+           prop.deviceOverlap ? "Supported" : "Not supported");
     printf("非同步引擎數量: %d\n\n", prop.asyncEngineCount);
 
     // 分配 Pinned Memory（非同步傳輸需要）

@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 /**
- * 傳統方式：每個執行緒處理一個元素
+ * Traditional approach: each thread processes one element
  */
 __global__ void traditionalProcess(float *arr, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -11,28 +11,28 @@ __global__ void traditionalProcess(float *arr, int n) {
 }
 
 /**
- * Grid-Stride Loop：每個執行緒處理多個元素
+ * Grid-Stride Loop: each thread processes multiple elements
  */
 __global__ void gridStrideProcess(float *arr, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = blockDim.x * gridDim.x;  // 總執行緒數
+    int stride = blockDim.x * gridDim.x;  // Total number of threads
 
-    // 每個執行緒用步幅方式處理多個元素
+    // Each thread processes multiple elements with stride
     for (int i = idx; i < n; i += stride) {
         arr[i] = arr[i] * 2.0f;
     }
 }
 
 /**
- * 展示 Grid-Stride Loop 的運作方式
+ * Show how Grid-Stride Loop works
  */
 __global__ void showStridePattern(int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
 
-    // 只讓前幾個執行緒印出，避免輸出太多
+    // Only let first few threads print to avoid too much output
     if (idx < 4) {
-        printf("Thread %d 處理的元素: ", idx);
+        printf("Thread %d processes elements: ", idx);
         for (int i = idx; i < n && i < idx + stride * 3; i += stride) {
             printf("%d ", i);
         }
@@ -42,29 +42,29 @@ __global__ void showStridePattern(int n) {
 
 int main() {
     printf("========================================\n");
-    printf("    Grid-Stride Loop 模式示範\n");
+    printf("    Grid-Stride Loop Pattern Demo\n");
     printf("========================================\n\n");
 
     const int n = 100;
     size_t bytes = n * sizeof(float);
 
-    // 分配統一記憶體
+    // Allocate unified memory
     float *data;
     cudaMallocManaged(&data, bytes);
 
-    // ========== 示範 1：展示步幅模式 ==========
-    printf("示範 1: 步幅模式視覺化\n");
-    printf("配置: <<<2, 4>>> (8 個執行緒處理 %d 個元素)\n", n);
-    printf("每個執行緒處理 %d 個元素\n\n", n / 8);
+    // ========== Demo 1: Show Stride Pattern ==========
+    printf("Demo 1: Stride Pattern Visualization\n");
+    printf("Config: <<<2, 4>>> (8 threads processing %d elements)\n", n);
+    printf("Each thread processes %d elements\n\n", n / 8);
 
     showStridePattern<<<2, 4>>>(n);
     cudaDeviceSynchronize();
 
-    // ========== 示範 2：傳統方式 ==========
-    printf("\n示範 2: 傳統方式\n");
-    printf("需要 <<<(n+255)/256, 256>>> = <<<1, 256>>> 個執行緒\n");
+    // ========== Demo 2: Traditional Approach ==========
+    printf("\nDemo 2: Traditional Approach\n");
+    printf("Needs <<<(n+255)/256, 256>>> = <<<1, 256>>> threads\n");
 
-    // 初始化資料
+    // Initialize data
     for (int i = 0; i < n; i++) {
         data[i] = (float)i;
     }
@@ -75,17 +75,17 @@ int main() {
     traditionalProcess<<<blocks, threadsPerBlock>>>(data, n);
     cudaDeviceSynchronize();
 
-    printf("結果（前 10 個元素）: ");
+    printf("Results (first 10 elements): ");
     for (int i = 0; i < 10; i++) {
         printf("%.0f ", data[i]);
     }
     printf("...\n");
 
-    // ========== 示範 3：Grid-Stride Loop ==========
-    printf("\n示範 3: Grid-Stride Loop\n");
-    printf("使用固定 <<<2, 256>>> 個執行緒處理 %d 個元素\n", n);
+    // ========== Demo 3: Grid-Stride Loop ==========
+    printf("\nDemo 3: Grid-Stride Loop\n");
+    printf("Using fixed <<<2, 256>>> threads to process %d elements\n", n);
 
-    // 重新初始化資料
+    // Reinitialize data
     for (int i = 0; i < n; i++) {
         data[i] = (float)i;
     }
@@ -93,32 +93,32 @@ int main() {
     gridStrideProcess<<<2, 256>>>(data, n);
     cudaDeviceSynchronize();
 
-    printf("結果（前 10 個元素）: ");
+    printf("Results (first 10 elements): ");
     for (int i = 0; i < 10; i++) {
         printf("%.0f ", data[i]);
     }
     printf("...\n");
 
-    // ========== 比較 ==========
+    // ========== Comparison ==========
     printf("\n========================================\n");
-    printf("💡 比較：\n");
+    printf("Comparison:\n");
     printf("========================================\n\n");
 
-    printf("傳統方式：\n");
-    printf("  - 需要根據 n 調整 block 數量\n");
-    printf("  - n 很大時，block 數量可能超過限制\n\n");
+    printf("Traditional approach:\n");
+    printf("  - Need to adjust block count based on n\n");
+    printf("  - Block count may exceed limit for large n\n\n");
 
-    printf("Grid-Stride Loop：\n");
-    printf("  - 固定的執行緒配置\n");
-    printf("  - 適用於任何大小的資料\n");
-    printf("  - 更好的可重用性\n");
-    printf("  - 更好的記憶體存取模式\n");
+    printf("Grid-Stride Loop:\n");
+    printf("  - Fixed thread configuration\n");
+    printf("  - Works for any data size\n");
+    printf("  - Better reusability\n");
+    printf("  - Better memory access patterns\n");
 
-    // 釋放記憶體
+    // Free memory
     cudaFree(data);
 
     printf("\n========================================\n");
-    printf(" Grid-Stride Loop 示範完成！\n");
+    printf(" Grid-Stride Loop demo complete!\n");
     printf("========================================\n");
 
     return 0;

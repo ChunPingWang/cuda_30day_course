@@ -113,7 +113,7 @@ int main() {
     cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);
     bool correct = verify(h_a, h_b, h_c, N);
 
-    printf("  時間: %.3f ms %s\n\n", ms, correct ? "✓" : "✗");
+    printf("  時間: %.3f ms %s\n\n", ms, correct ? "[OK]" : "[FAIL]");
     float baseTime = ms;
 
     // ========== 版本 2：float4 ==========
@@ -132,7 +132,7 @@ int main() {
     cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);
     correct = verify(h_a, h_b, h_c, N);
 
-    printf("  時間: %.3f ms (%.2fx) %s\n\n", ms, baseTime/ms, correct ? "✓" : "✗");
+    printf("  時間: %.3f ms (%.2fx) %s\n\n", ms, baseTime/ms, correct ? "[OK]" : "[FAIL]");
 
     // ========== 版本 3：Grid-Stride + 展開 ==========
     printf("版本 3：Grid-Stride + 展開\n");
@@ -149,7 +149,7 @@ int main() {
     cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);
     correct = verify(h_a, h_b, h_c, N);
 
-    printf("  時間: %.3f ms (%.2fx) %s\n\n", ms, baseTime/ms, correct ? "✓" : "✗");
+    printf("  時間: %.3f ms (%.2fx) %s\n\n", ms, baseTime/ms, correct ? "[OK]" : "[FAIL]");
 
     // 清理
     cudaFree(d_a);
@@ -162,7 +162,7 @@ int main() {
     cudaEventDestroy(stop);
 
     printf("========================================\n");
-    printf("💡 最佳化技巧：\n");
+    printf("* 最佳化技巧：\n");
     printf("1. 使用向量類型 (float4) 減少記憶體交易\n");
     printf("2. 迴圈展開減少指令開銷\n");
     printf("3. Grid-Stride 模式提高靈活性\n");

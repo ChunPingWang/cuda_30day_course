@@ -1,13 +1,13 @@
 #include <stdio.h>
 
 /**
- * 練習 2：向量點積
+ * Exercise 2: Vector Dot Product
  * result = A[0]*B[0] + A[1]*B[1] + ... + A[n-1]*B[n-1]
  *
- * 這是一個簡化版本：
- * - GPU 計算每個元素的乘積
- * - CPU 進行最終加總
- * （更高效的方法會在第三週學習：平行歸約）
+ * This is a simplified version:
+ * - GPU computes element-wise products
+ * - CPU performs final summation
+ * (More efficient method will be learned in Week 3: Parallel Reduction)
  */
 
 __global__ void elementwiseMultiply(float *a, float *b, float *c, int n) {
@@ -20,19 +20,19 @@ __global__ void elementwiseMultiply(float *a, float *b, float *c, int n) {
 
 int main() {
     printf("========================================\n");
-    printf("    練習 2：向量點積\n");
+    printf("    Exercise 2: Vector Dot Product\n");
     printf("========================================\n\n");
 
     const int n = 8;
     size_t bytes = n * sizeof(float);
 
-    // 使用統一記憶體
+    // Use unified memory
     float *a, *b, *c;
     cudaMallocManaged(&a, bytes);
     cudaMallocManaged(&b, bytes);
     cudaMallocManaged(&c, bytes);
 
-    // 初始化
+    // Initialize
     printf("A = [ ");
     for (int i = 0; i < n; i++) {
         a[i] = (float)(i + 1);
@@ -47,48 +47,49 @@ int main() {
     }
     printf("]\n\n");
 
-    // GPU: 計算元素乘積
+    // GPU: Compute element-wise products
     int threadsPerBlock = 256;
     int blocks = (n + threadsPerBlock - 1) / threadsPerBlock;
 
     elementwiseMultiply<<<blocks, threadsPerBlock>>>(a, b, c, n);
     cudaDeviceSynchronize();
 
-    printf("A * B（元素乘積）= [ ");
+    printf("A * B (element-wise) = [ ");
     for (int i = 0; i < n; i++) {
         printf("%.0f ", c[i]);
     }
     printf("]\n\n");
 
-    // CPU: 加總
+    // CPU: Sum up
     float dotProduct = 0.0f;
     for (int i = 0; i < n; i++) {
         dotProduct += c[i];
     }
 
-    printf("點積 = ");
+    printf("Dot Product = ");
     for (int i = 0; i < n; i++) {
         printf("%.0f", a[i] * b[i]);
         if (i < n - 1) printf(" + ");
     }
     printf("\n");
-    printf("     = %.0f\n\n", dotProduct);
+    printf("           = %.0f\n\n", dotProduct);
 
-    // 驗證
+    // Verify
     float expected = 0.0f;
     for (int i = 0; i < n; i++) {
-        expected += (i + 1) * (i + 1);  // 1² + 2² + 3² + ...
+        expected += (i + 1) * (i + 1);  // 1^2 + 2^2 + 3^2 + ...
     }
-    printf("預期結果: %.0f\n", expected);
-    printf("結果驗證: %s\n", (dotProduct == expected) ? " 正確" : " 錯誤");
+    printf("Expected result: %.0f\n", expected);
+    printf("Result verification: %s\n", (dotProduct == expected) ? "CORRECT" : "ERROR");
 
-    // 釋放記憶體
+    // Free memory
     cudaFree(a);
     cudaFree(b);
     cudaFree(c);
 
-    printf("\n💡 注意：這個版本在 CPU 上進行加總。\n");
-    printf("   第三週我們會學習如何在 GPU 上高效地進行歸約操作。\n");
+    printf("\nNote: This version performs summation on CPU.\n");
+    printf("In Week 3, we will learn how to efficiently perform\n");
+    printf("reduction operations on GPU.\n");
 
     return 0;
 }

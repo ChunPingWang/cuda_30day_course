@@ -1,19 +1,19 @@
 #include <stdio.h>
 
 /**
- * 展示執行緒索引的計算
+ * Demonstrate thread index calculation
  */
 __global__ void printThreadInfo() {
-    // 計算全域索引
+    // Calculate global index
     int globalIdx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // 每個執行緒印出自己的資訊
+    // Each thread prints its own info
     printf("Block: %2d | Thread: %2d | Global Index: %2d\n",
            blockIdx.x, threadIdx.x, globalIdx);
 }
 
 /**
- * 展示二維索引
+ * Demonstrate 2D indexing
  */
 __global__ void print2DThreadInfo() {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -27,25 +27,25 @@ __global__ void print2DThreadInfo() {
 
 int main() {
     printf("========================================\n");
-    printf("      CUDA 執行緒索引示範\n");
+    printf("      CUDA Thread Index Demo\n");
     printf("========================================\n\n");
 
-    // 示範 1: 一維索引
-    printf("示範 1: 一維索引\n");
-    printf("配置: <<<3, 4>>> (3 個 Block，每個 4 個 Thread)\n");
+    // Demo 1: 1D indexing
+    printf("Demo 1: 1D Indexing\n");
+    printf("Config: <<<3, 4>>> (3 Blocks, 4 Threads each)\n");
     printf("----------------------------------------\n");
     printThreadInfo<<<3, 4>>>();
     cudaDeviceSynchronize();
 
-    printf("\n示範 2: 不同的配置\n");
-    printf("配置: <<<2, 8>>> (2 個 Block，每個 8 個 Thread)\n");
+    printf("\nDemo 2: Different configuration\n");
+    printf("Config: <<<2, 8>>> (2 Blocks, 8 Threads each)\n");
     printf("----------------------------------------\n");
     printThreadInfo<<<2, 8>>>();
     cudaDeviceSynchronize();
 
-    // 示範 3: 二維索引
-    printf("\n示範 3: 二維索引\n");
-    printf("配置: <<<(2,2), (2,2)>>> (2x2 Block Grid, 2x2 Thread Block)\n");
+    // Demo 3: 2D indexing
+    printf("\nDemo 3: 2D Indexing\n");
+    printf("Config: <<<(2,2), (2,2)>>> (2x2 Block Grid, 2x2 Thread Block)\n");
     printf("----------------------------------------\n");
     dim3 blocks(2, 2);
     dim3 threads(2, 2);
@@ -53,10 +53,10 @@ int main() {
     cudaDeviceSynchronize();
 
     printf("\n========================================\n");
-    printf("💡 重要觀察：\n");
-    printf("1. 全域索引 = blockIdx.x * blockDim.x + threadIdx.x\n");
-    printf("2. 執行緒的執行順序是不確定的！\n");
-    printf("3. 不同配置可以產生相同數量的執行緒\n");
+    printf("Key Observations:\n");
+    printf("1. Global Index = blockIdx.x * blockDim.x + threadIdx.x\n");
+    printf("2. Thread execution order is non-deterministic!\n");
+    printf("3. Different configs can create same number of threads\n");
     printf("========================================\n");
 
     return 0;

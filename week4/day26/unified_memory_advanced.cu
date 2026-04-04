@@ -217,10 +217,10 @@ int main() {
     cudaGetDeviceProperties(&prop, 0);
     printf("GPU: %s\n", prop.name);
     printf("計算能力: %d.%d\n", prop.major, prop.minor);
-    printf("Unified Memory 支援: %s\n",
-           prop.managedMemory ? "是" : "否");
-    printf("並行存取支援: %s\n\n",
-           prop.concurrentManagedAccess ? "是" : "否");
+    printf("Unified Memory Support: %s\n",
+           prop.managedMemory ? "Yes" : "No");
+    printf("Concurrent Managed Access: %s\n\n",
+           prop.concurrentManagedAccess ? "Yes" : "No");
 
     int size = N * sizeof(float);
     printf("資料大小: %d 個元素 (%.1f MB)\n\n", N, size / (1024.0f * 1024.0f));

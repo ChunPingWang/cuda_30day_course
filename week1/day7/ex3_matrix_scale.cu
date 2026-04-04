@@ -1,8 +1,9 @@
 #include <stdio.h>
+#include <math.h>
 
 /**
- * 練習 3：矩陣縮放
- * 將矩陣中每個元素乘以常數 k
+ * Exercise 3: Matrix Scaling
+ * Multiply each element in the matrix by constant k
  */
 
 __global__ void matrixScale(float *matrix, float k, int width, int height) {
@@ -29,7 +30,7 @@ void printMatrix(float *matrix, int width, int height, const char *name) {
 
 int main() {
     printf("========================================\n");
-    printf("    練習 3：矩陣縮放\n");
+    printf("    Exercise 3: Matrix Scaling\n");
     printf("========================================\n\n");
 
     const int width = 4;
@@ -37,41 +38,41 @@ int main() {
     const float k = 2.5f;
     size_t bytes = width * height * sizeof(float);
 
-    // 使用統一記憶體
+    // Use unified memory
     float *matrix;
     cudaMallocManaged(&matrix, bytes);
 
-    // 初始化矩陣
+    // Initialize matrix
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             matrix[y * width + x] = (float)(y * width + x + 1);
         }
     }
 
-    printMatrix(matrix, width, height, "原始矩陣");
-    printf("縮放係數 k = %.1f\n\n", k);
+    printMatrix(matrix, width, height, "Original Matrix");
+    printf("Scale factor k = %.1f\n\n", k);
 
-    // 執行核心函數
+    // Execute kernel
     dim3 threadsPerBlock(16, 16);
     dim3 numBlocks((width + 15) / 16, (height + 15) / 16);
 
     matrixScale<<<numBlocks, threadsPerBlock>>>(matrix, k, width, height);
     cudaDeviceSynchronize();
 
-    printMatrix(matrix, width, height, "縮放後的矩陣 (×2.5)");
+    printMatrix(matrix, width, height, "Scaled Matrix (x2.5)");
 
-    // 驗證
+    // Verify
     bool correct = true;
     for (int i = 0; i < width * height; i++) {
         float expected = (i + 1) * k;
-        if (abs(matrix[i] - expected) > 0.001f) {
+        if (fabs(matrix[i] - expected) > 0.001f) {
             correct = false;
             break;
         }
     }
-    printf("結果驗證: %s\n", correct ? " 正確" : " 錯誤");
+    printf("Result verification: %s\n", correct ? "CORRECT" : "ERROR");
 
-    // 釋放記憶體
+    // Free memory
     cudaFree(matrix);
 
     return 0;
