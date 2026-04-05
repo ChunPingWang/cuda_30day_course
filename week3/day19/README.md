@@ -293,11 +293,38 @@ int main() {
 2. 對圖像資料計算 RGB 直方圖
 3. 嘗試不同的 Block 大小觀察效能變化
 
-## 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o histogram.exe histogram.cu
+histogram.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o histogram.exe histogram.cu
+.\histogram.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc histogram.cu -o histogram
+nvcc -Wno-deprecated-gpu-targets -o histogram histogram.cu
 ./histogram
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+data = cp.random.randint(0, 256, size=100000, dtype=cp.int32)
+hist = cp.bincount(data, minlength=256)
+print(f"直方圖前 10 個 bin: {hist[:10]}")
 ```
 
 ---

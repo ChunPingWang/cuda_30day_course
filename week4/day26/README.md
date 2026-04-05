@@ -311,11 +311,49 @@ processOnCPU(data);
 2. 使用 `cudaMemAdvise` 優化唯讀資料存取
 3. 在不同 GPU 上測試效能
 
-## 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o unified_memory_advanced.exe unified_memory_advanced.cu
+unified_memory_advanced.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o unified_memory_advanced.exe unified_memory_advanced.cu
+.\unified_memory_advanced.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc unified_memory_advanced.cu -o um_advanced
-./um_advanced
+nvcc -Wno-deprecated-gpu-targets -o unified_memory_advanced unified_memory_advanced.cu
+./unified_memory_advanced
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+import numpy as np
+
+# CuPy 自動管理 GPU 記憶體
+a = cp.array([1, 2, 3, 4, 5], dtype=cp.float32)
+b = a * 2  # GPU 上運算
+
+# 與 NumPy 互操作（自動傳輸）
+a_np = cp.asnumpy(b)          # GPU -> CPU
+a_gpu = cp.asarray(a_np)      # CPU -> GPU
+
+# 記憶體池資訊
+pool = cp.get_default_memory_pool()
+print(f"已使用 GPU 記憶體: {pool.used_bytes() / 1024:.1f} KB")
+print(f"已分配 GPU 記憶體: {pool.total_bytes() / 1024:.1f} KB")
 ```
 
 ---

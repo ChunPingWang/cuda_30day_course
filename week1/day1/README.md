@@ -68,14 +68,51 @@ nvidia-smi
 
 讓我們運行一個簡單的程式來確認一切正常！
 
-查看並執行 `device_query.cu` 這個檔案：
+查看並執行 `device_query.cu` 這個檔案，這個程式會顯示你的 GPU 的詳細資訊。
+
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+#### device_query.cu - GPU 裝置資訊查詢
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o device_query.exe device_query.cu
+device_query.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o device_query.exe device_query.cu
+.\device_query.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc device_query.cu -o device_query
+nvcc -Wno-deprecated-gpu-targets -o device_query device_query.cu
 ./device_query
 ```
 
-這個程式會顯示你的 GPU 的詳細資訊。
+### Python 等效
+
+已提供 `device_query.py`，可直接執行：
+
+```bash
+python device_query.py
+```
+
+也可以使用 CuPy 查詢裝置資訊：
+
+```python
+import cupy as cp
+dev = cp.cuda.Device(0)
+print(f"GPU: {dev.attributes}")
+print(f"記憶體: {dev.mem_info}")
+```
 
 ## 🎯 今日作業
 

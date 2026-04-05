@@ -283,11 +283,49 @@ cudaStreamCreateWithPriority(&highPriorityStream,
 2. 比較單 Stream 和多 Stream 的效能
 3. 使用事件測量各階段時間
 
-## 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o streams.exe streams.cu
+streams.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o streams.exe streams.cu
+.\streams.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc streams.cu -o streams
+nvcc -Wno-deprecated-gpu-targets -o streams streams.cu
 ./streams
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+
+n = 1_000_000
+streams = [cp.cuda.Stream() for _ in range(4)]
+
+results = []
+for i, stream in enumerate(streams):
+    with stream:
+        a = cp.random.rand(n, dtype=cp.float32)
+        b = cp.random.rand(n, dtype=cp.float32)
+        results.append(a + b)
+
+# 等待所有 streams 完成
+for s in streams:
+    s.synchronize()
 ```
 
 ---

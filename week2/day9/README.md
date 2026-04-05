@@ -150,6 +150,45 @@ __global__ void vectorAddUnrolled(float *a, float *b, float *c, int n) {
 1. **vector_add_optimized.cu** - 向量加法最佳化
 2. **memory_patterns.cu** - 記憶體存取模式比較
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o vector_add_optimized.exe vector_add_optimized.cu
+vector_add_optimized.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o vector_add_optimized.exe vector_add_optimized.cu
+.\vector_add_optimized.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o vector_add_optimized vector_add_optimized.cu
+./vector_add_optimized
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+n = 10_000_000
+a = cp.random.rand(n, dtype=cp.float32)
+b = cp.random.rand(n, dtype=cp.float32)
+start = cp.cuda.Event(); end = cp.cuda.Event()
+start.record()
+c = a + b
+end.record(); end.synchronize()
+print(f"GPU 時間: {cp.cuda.get_elapsed_time(start, end):.2f} ms")
+```
+
 ## 📝 今日作業
 
 1. ✅ 理解記憶體合併的重要性

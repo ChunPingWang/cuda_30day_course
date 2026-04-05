@@ -40,7 +40,6 @@ __device__ int warpInclusiveScan(int val) {
 
 // 單一 Block 的 Inclusive Scan
 __global__ void blockInclusiveScan(int *input, int *output, int n) {
-    __shared__ int sdata[BLOCK_SIZE];
     __shared__ int warpSums[32];
 
     int tid = threadIdx.x;

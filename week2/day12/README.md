@@ -137,6 +137,46 @@ if (threadIdx.x == 0) {
 2. **atomic_ops.cu** - 原子操作範例
 3. **histogram.cu** - 直方圖計算
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o atomic_ops.exe atomic_ops.cu
+atomic_ops.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o atomic_ops.exe atomic_ops.cu
+.\atomic_ops.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o atomic_ops atomic_ops.cu
+./atomic_ops
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+# CuPy 透過 RawKernel 支援原子操作
+kernel = cp.RawKernel(r'''
+extern "C" __global__ void atomicAddDemo(int *counter) {
+    atomicAdd(counter, 1);
+}
+''', 'atomicAddDemo')
+counter = cp.zeros(1, dtype=cp.int32)
+kernel((10,), (256,), (counter,))
+print(f"計數器: {counter[0]}")  # 2560
+```
+
 ## 📝 今日作業
 
 1. ✅ 理解不同層級的同步

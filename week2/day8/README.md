@@ -171,6 +171,49 @@ cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, myKernel, 0, 0);
 2. **occupancy.cu** - 佔用率計算
 3. **divergence_demo.cu** - Warp 分歧示範
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o warp_info.exe warp_info.cu
+warp_info.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o divergence_demo.exe divergence_demo.cu
+divergence_demo.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o warp_info.exe warp_info.cu
+.\warp_info.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o divergence_demo.exe divergence_demo.cu
+.\divergence_demo.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o warp_info warp_info.cu
+./warp_info
+
+nvcc -Wno-deprecated-gpu-targets -o divergence_demo divergence_demo.cu
+./divergence_demo
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+# Warp 資訊查詢
+dev = cp.cuda.Device(0)
+print(f"Warp 大小: {dev.attributes['WarpSize']}")
+```
+
 ## 📝 今日作業
 
 1. ✅ 理解 Warp 的概念

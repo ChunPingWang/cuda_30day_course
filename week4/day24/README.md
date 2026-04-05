@@ -313,11 +313,43 @@ for (int i = 0; i < 2; i++) {
 2. 如果有多個 GPU，實作多 GPU 向量加法
 3. 比較單 GPU 和多 GPU 的效能
 
-## 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o multi_gpu.exe multi_gpu.cu
+multi_gpu.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o multi_gpu.exe multi_gpu.cu
+.\multi_gpu.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc multi_gpu.cu -o multi_gpu
+nvcc -Wno-deprecated-gpu-targets -o multi_gpu multi_gpu.cu
 ./multi_gpu
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+
+num_gpus = cp.cuda.runtime.getDeviceCount()
+print(f"可用 GPU 數量: {num_gpus}")
+
+for i in range(num_gpus):
+    with cp.cuda.Device(i):
+        a = cp.random.rand(1000, dtype=cp.float32)
+        print(f"GPU {i}: 計算完成, 總和 = {cp.sum(a):.2f}")
 ```
 
 ---

@@ -163,14 +163,52 @@ __global__ void transpose(float *input, float *output,
 2. **2d_indexing.cu** - 二維索引操作
 3. **matrix_ops.cu** - 矩陣操作實例
 
-### 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o 2d_indexing.exe 2d_indexing.cu
+2d_indexing.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o stride_pattern.exe stride_pattern.cu
+stride_pattern.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o 2d_indexing.exe 2d_indexing.cu
+.\2d_indexing.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o stride_pattern.exe stride_pattern.cu
+.\stride_pattern.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc stride_pattern.cu -o stride_pattern
-./stride_pattern
-
-nvcc 2d_indexing.cu -o 2d_indexing
+nvcc -Wno-deprecated-gpu-targets -o 2d_indexing 2d_indexing.cu
 ./2d_indexing
+
+nvcc -Wno-deprecated-gpu-targets -o stride_pattern stride_pattern.cu
+./stride_pattern
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+# 2D 陣列操作
+matrix = cp.arange(20).reshape(4, 5)
+print(f"形狀: {matrix.shape}")
+print(f"元素 [2,3]: {matrix[2, 3]}")
+
+# Stride 存取模式
+col_access = matrix[:, 0]    # 行存取
+row_access = matrix[0, :]    # 列存取
 ```
 
 ## 📝 今日作業

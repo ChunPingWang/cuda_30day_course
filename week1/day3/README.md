@@ -124,23 +124,75 @@ int y = blockIdx.y * blockDim.y + threadIdx.y;
 
 這對處理圖片（2D）或 3D 模擬特別有用！
 
-## 🚀 實作練習
+## 🔧 編譯與執行
 
-### 練習 1：執行 thread_index.cu
+### CUDA 編譯
+
+#### thread_index.cu - 執行緒索引示範
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o thread_index.exe thread_index.cu
+thread_index.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o thread_index.exe thread_index.cu
+.\thread_index.exe
+```
+
+**WSL / Linux：**
+
 ```bash
-nvcc thread_index.cu -o thread_index
+nvcc -Wno-deprecated-gpu-targets -o thread_index thread_index.cu
 ./thread_index
 ```
 
-觀察不同配置的輸出。
+#### array_index.cu - 陣列索引示範
 
-### 練習 2：執行 array_index.cu
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o array_index.exe array_index.cu
+array_index.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o array_index.exe array_index.cu
+.\array_index.exe
+```
+
+**WSL / Linux：**
+
 ```bash
-nvcc array_index.cu -o array_index
+nvcc -Wno-deprecated-gpu-targets -o array_index array_index.cu
 ./array_index
 ```
 
-這個程式展示如何用執行緒索引來處理陣列。
+### Python 等效
+
+```python
+import cupy as cp
+# CuPy 使用 RawKernel 展示執行緒索引
+kernel = cp.RawKernel(r'''
+extern "C" __global__ void showIndex() {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    printf("Block %d, Thread %d => Global Index: %d\n",
+           blockIdx.x, threadIdx.x, idx);
+}
+''', 'showIndex')
+kernel((3,), (4,), ())
+cp.cuda.Stream.null.synchronize()
+```
+
+## 🚀 實作練習
+
+觀察 `thread_index.cu` 不同配置的輸出，以及 `array_index.cu` 如何用執行緒索引來處理陣列。
 
 ## 📝 今日作業
 

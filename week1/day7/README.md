@@ -101,6 +101,81 @@ int idx = y * width + x;
 - `ex3_matrix_scale.cu` - 矩陣縮放
 - `ex4_find_max.cu` - 陣列最大值
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o ex1_square.exe ex1_square.cu
+ex1_square.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o ex2_dot_product.exe ex2_dot_product.cu
+ex2_dot_product.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o ex3_matrix_scale.exe ex3_matrix_scale.cu
+ex3_matrix_scale.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o ex4_find_max.exe ex4_find_max.cu
+ex4_find_max.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o ex1_square.exe ex1_square.cu
+.\ex1_square.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o ex2_dot_product.exe ex2_dot_product.cu
+.\ex2_dot_product.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o ex3_matrix_scale.exe ex3_matrix_scale.cu
+.\ex3_matrix_scale.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o ex4_find_max.exe ex4_find_max.cu
+.\ex4_find_max.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o ex1_square ex1_square.cu
+./ex1_square
+
+nvcc -Wno-deprecated-gpu-targets -o ex2_dot_product ex2_dot_product.cu
+./ex2_dot_product
+
+nvcc -Wno-deprecated-gpu-targets -o ex3_matrix_scale ex3_matrix_scale.cu
+./ex3_matrix_scale
+
+nvcc -Wno-deprecated-gpu-targets -o ex4_find_max ex4_find_max.cu
+./ex4_find_max
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+
+# 練習 1：陣列平方
+a = cp.array([1, 2, 3, 4, 5], dtype=cp.float32)
+squared = a ** 2
+
+# 練習 2：內積
+a = cp.array([1, 2, 3], dtype=cp.float32)
+b = cp.array([4, 5, 6], dtype=cp.float32)
+dot = cp.dot(a, b)
+
+# 練習 3：矩陣縮放
+matrix = cp.ones((4, 4), dtype=cp.float32)
+scaled = matrix * 2.5
+
+# 練習 4：找最大值
+data = cp.random.rand(1000, dtype=cp.float32)
+max_val = cp.max(data)
+```
+
 ## 🔍 自我測驗
 
 回答以下問題來測試你的理解：

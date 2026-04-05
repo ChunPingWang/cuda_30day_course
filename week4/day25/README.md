@@ -285,13 +285,9 @@ nvcc -arch=sm_70 -rdc=true dynamic.cu -o dynamic -lcudadevrt
 2. 使用動態平行處理實作樹遍歷
 3. 比較動態平行與傳統方式的效能
 
-## 編譯與執行
+## 🔧 編譯與執行
 
-```bash
-# 注意：需要 -rdc=true 和 -lcudadevrt
-nvcc -arch=sm_50 -rdc=true dynamic_parallelism.cu -o dp -lcudadevrt
-./dp
-```
+本日為動態平行處理概念說明，無範例程式需要編譯。
 
 ---
 

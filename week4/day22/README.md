@@ -80,6 +80,51 @@ int main(int argc, char *argv[]) {
 2. **blur_comparison.cu** - 不同模糊方法比較
 3. **image_pipeline.cu** - 圖像處理管線
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o image_filters.exe image_filters.cu
+image_filters.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o image_filters.exe image_filters.cu
+.\image_filters.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o image_filters image_filters.cu
+./image_filters
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+from cupyx.scipy.ndimage import convolve
+
+img = cp.random.rand(512, 512).astype(cp.float32)
+
+# Sobel 邊緣偵測
+sobel_x = cp.array([[-1,0,1],[-2,0,2],[-1,0,1]], dtype=cp.float32)
+sobel_y = cp.array([[-1,-2,-1],[0,0,0],[1,2,1]], dtype=cp.float32)
+edges_x = convolve(img, sobel_x)
+edges_y = convolve(img, sobel_y)
+edges = cp.sqrt(edges_x**2 + edges_y**2)
+
+# 銳化
+sharpen = cp.array([[0,-1,0],[-1,5,-1],[0,-1,0]], dtype=cp.float32)
+sharpened = convolve(img, sharpen)
+```
+
 ---
 
 **明天我們將學習直方圖計算！** 📊

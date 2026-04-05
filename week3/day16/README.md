@@ -293,14 +293,45 @@ int main() {
 2. 比較全域記憶體和常數記憶體的效能差異
 3. 嘗試不同的紋理邊界處理模式
 
-## 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o constant_memory.exe constant_memory.cu
+constant_memory.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o constant_memory.exe constant_memory.cu
+.\constant_memory.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc constant_memory.cu -o constant_memory
+nvcc -Wno-deprecated-gpu-targets -o constant_memory constant_memory.cu
 ./constant_memory
+```
 
-nvcc texture_example.cu -o texture_example
-./texture_example
+### Python 等效
+
+```python
+import cupy as cp
+# CuPy 中使用常數記憶體的 RawKernel
+kernel = cp.RawKernel(r'''
+__constant__ float coeff[5];
+extern "C" __global__ void applyFilter(float *data, float *out, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        out[idx] = data[idx] * coeff[0];
+    }
+}
+''', 'applyFilter')
 ```
 
 ---

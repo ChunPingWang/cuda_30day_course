@@ -258,6 +258,10 @@ nvcc -O3 program.cu -o program
 nvcc -g -G program.cu -o program
 ```
 
+## 🔧 編譯與執行
+
+本日為課程總結，無範例程式需要編譯。
+
 ---
 
 **感謝你完成這個課程！祝你在 GPU 程式設計的道路上一切順利！**

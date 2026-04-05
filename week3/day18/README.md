@@ -143,6 +143,42 @@ __global__ void reduce_shuffle(float *data, float *result, int n) {
 2. **reduction_optimized.cu** - 優化版本
 3. **reduction_warp.cu** - Warp Shuffle 版本
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o reduction_basic.exe reduction_basic.cu
+reduction_basic.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o reduction_basic.exe reduction_basic.cu
+.\reduction_basic.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o reduction_basic reduction_basic.cu
+./reduction_basic
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+a = cp.random.rand(1_000_000, dtype=cp.float32)
+total = cp.sum(a)       # 歸約求和
+max_val = cp.max(a)     # 歸約求最大值
+min_val = cp.min(a)     # 歸約求最小值
+print(f"總和: {total}, 最大: {max_val}, 最小: {min_val}")
+```
+
 ## 📝 今日作業
 
 1. ✅ 實作求和歸約

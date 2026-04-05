@@ -201,6 +201,42 @@ __global__ void matrixMulTiled(float *A, float *B, float *C,
 1. **shared_memory_basics.cu** - 共享記憶體基礎
 2. **matrix_mul_tiled.cu** - Tiled 矩陣乘法
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o matrix_mul_tiled.exe matrix_mul_tiled.cu
+matrix_mul_tiled.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o matrix_mul_tiled.exe matrix_mul_tiled.cu
+.\matrix_mul_tiled.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o matrix_mul_tiled matrix_mul_tiled.cu
+./matrix_mul_tiled
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+# CuPy 的 matmul 自動使用 cuBLAS 優化（包含 tiling）
+n = 1024
+a = cp.random.rand(n, n, dtype=cp.float32)
+b = cp.random.rand(n, n, dtype=cp.float32)
+c = cp.matmul(a, b)  # 內部已使用最佳化演算法
+```
+
 ## 📝 今日作業
 
 1. ✅ 理解共享記憶體的特性

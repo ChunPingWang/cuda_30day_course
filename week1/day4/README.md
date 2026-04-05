@@ -120,16 +120,66 @@ __global__ void vectorAdd(int *a, int *b, int *c, int n) {
 ### 進階版：vector_add_benchmark.cu
 包含效能測試和 CPU 版本比較。
 
-## 🚀 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+#### vector_add.cu - 基礎向量加法
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o vector_add.exe vector_add.cu
+vector_add.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o vector_add.exe vector_add.cu
+.\vector_add.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-# 基礎版
-nvcc vector_add.cu -o vector_add
+nvcc -Wno-deprecated-gpu-targets -o vector_add vector_add.cu
 ./vector_add
+```
 
-# 進階版（含效能測試）
-nvcc vector_add_benchmark.cu -o benchmark
+#### vector_add_benchmark.cu - 向量加法效能測試
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o benchmark.exe vector_add_benchmark.cu
+benchmark.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o benchmark.exe vector_add_benchmark.cu
+.\benchmark.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o benchmark vector_add_benchmark.cu
 ./benchmark
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+import numpy as np
+n = 1000000
+a = cp.random.rand(n, dtype=cp.float32)
+b = cp.random.rand(n, dtype=cp.float32)
+c = a + b  # GPU 向量加法
+print(f"結果前 5 個元素: {c[:5]}")
 ```
 
 ## 📝 今日作業

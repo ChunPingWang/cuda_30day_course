@@ -237,6 +237,10 @@ void softmax(float *d_data, int batch_size, int num_classes);
 | Day 29 | 核心功能實作 |
 | Day 30 | 優化、測試與文件 |
 
+## 🔧 編譯與執行
+
+本日為專題規劃，無範例程式需要編譯。
+
 ## 今日作業
 
 1. 選擇一個專題

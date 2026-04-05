@@ -88,24 +88,74 @@ helloFromGPU<<<1, 1>>>();
 - 這個函數讓 CPU 等待 GPU 完成工作
 - 就像老師說「等大家都做完再下課」
 
-## 🚀 編譯與執行
+## 🔧 編譯與執行
 
-### 步驟 1：編譯
-```bash
-nvcc hello_world.cu -o hello_world
+### CUDA 編譯
+
+#### hello_world.cu - 基礎 Hello World
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o hello_world.exe hello_world.cu
+hello_world.exe
 ```
 
-`nvcc` 是 NVIDIA 的 CUDA 編譯器。
+**Windows（PowerShell）：**
 
-### 步驟 2：執行
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o hello_world.exe hello_world.cu
+.\hello_world.exe
+```
+
+**WSL / Linux：**
+
 ```bash
+nvcc -Wno-deprecated-gpu-targets -o hello_world hello_world.cu
 ./hello_world
 ```
 
-### 預期輸出
+#### hello_advanced.cu - 進階 Hello World
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o hello_advanced.exe hello_advanced.cu
+hello_advanced.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o hello_advanced.exe hello_advanced.cu
+.\hello_advanced.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o hello_advanced hello_advanced.cu
+./hello_advanced
+```
+
+### 預期輸出（hello_world.cu）
 ```
 Hello World from CPU!
 Hello World from GPU!
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+# CuPy 使用 RawKernel 執行自訂 CUDA 核心
+kernel = cp.RawKernel(r'''
+extern "C" __global__ void hello() {
+    printf("Hello World from GPU! Thread %d\n", threadIdx.x);
+}
+''', 'hello')
+kernel((1,), (10,), ())
+cp.cuda.Stream.null.synchronize()
 ```
 
 ## 🔬 實驗時間

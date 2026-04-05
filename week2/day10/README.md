@@ -120,14 +120,39 @@ A(M×K) └───────┘
 1. **matrix_add.cu** - 矩陣加法
 2. **matrix_mul_basic.cu** - 矩陣乘法基本版
 
-### 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o matrix_mul_basic.exe matrix_mul_basic.cu
+matrix_mul_basic.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o matrix_mul_basic.exe matrix_mul_basic.cu
+.\matrix_mul_basic.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc matrix_add.cu -o matrix_add
-./matrix_add
+nvcc -Wno-deprecated-gpu-targets -o matrix_mul_basic matrix_mul_basic.cu
+./matrix_mul_basic
+```
 
-nvcc matrix_mul_basic.cu -o matrix_mul
-./matrix_mul
+### Python 等效
+
+```python
+import cupy as cp
+n = 512
+a = cp.random.rand(n, n, dtype=cp.float32)
+b = cp.random.rand(n, n, dtype=cp.float32)
+c = cp.matmul(a, b)
 ```
 
 ## 📝 今日作業

@@ -90,7 +90,6 @@ float runSingleGPU(float *h_a, float *h_b, float *h_c, int n) {
 }
 
 float runMultiGPU(float *h_a, float *h_b, float *h_c, int n, int numGPUs) {
-    int size = n * sizeof(float);
     int chunkSize = n / numGPUs;
     int chunkBytes = chunkSize * sizeof(float);
 

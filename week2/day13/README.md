@@ -138,6 +138,44 @@ NVIDIA 提供的專業除錯和效能分析工具。
 1. **error_handling.cu** - 錯誤處理示範
 2. **debug_example.cu** - 除錯技巧範例
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o error_handling.exe error_handling.cu
+error_handling.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o error_handling.exe error_handling.cu
+.\error_handling.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o error_handling error_handling.cu
+./error_handling
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+try:
+    # 嘗試分配超大記憶體
+    x = cp.zeros(10**12, dtype=cp.float32)
+except cp.cuda.memory.OutOfMemoryError as e:
+    print(f"GPU 記憶體不足: {e}")
+except Exception as e:
+    print(f"錯誤: {e}")
+```
+
 ## 📝 今日作業
 
 1. ✅ 在你的程式中加入完整的錯誤檢查

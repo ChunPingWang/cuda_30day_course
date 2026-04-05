@@ -252,16 +252,38 @@ int main() {
 2. 使用 Thrust 排序並比較效能
 3. 嘗試對結構體排序
 
-## 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o bitonic_sort.exe bitonic_sort.cu
+bitonic_sort.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o bitonic_sort.exe bitonic_sort.cu
+.\bitonic_sort.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-# Bitonic Sort
-nvcc bitonic_sort.cu -o bitonic_sort
+nvcc -Wno-deprecated-gpu-targets -o bitonic_sort bitonic_sort.cu
 ./bitonic_sort
+```
 
-# 使用 Thrust
-nvcc -o thrust_sort thrust_sort.cu
-./thrust_sort
+### Python 等效
+
+```python
+import cupy as cp
+data = cp.random.rand(1024, dtype=cp.float32)
+sorted_data = cp.sort(data)  # GPU 排序
+print(f"前 10 個: {sorted_data[:10]}")
 ```
 
 ---

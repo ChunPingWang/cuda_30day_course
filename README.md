@@ -41,6 +41,9 @@ call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build
 **PowerShell：**
 
 ```powershell
+# 首次需要允許執行腳本（僅對當前視窗生效）
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
 # Visual Studio 2026（v18）
 & "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64
 
@@ -55,14 +58,14 @@ call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build
 Command Prompt：
 
 ```cmd
-nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -o hello_world.exe week1\day2\hello_world.cu
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o hello_world.exe week1\day2\hello_world.cu
 hello_world.exe
 ```
 
 PowerShell：
 
 ```powershell
-nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -o hello_world.exe week1/day2/hello_world.cu
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o hello_world.exe week1/day2/hello_world.cu
 .\hello_world.exe
 ```
 
@@ -82,6 +85,7 @@ PowerShell：
 
 > `-allow-unsupported-compiler`：允許較新版本的 MSVC 編譯器。
 > `-Wno-deprecated-gpu-targets`：隱藏舊架構棄用警告。
+> `-Xcompiler "/wd4819"`：抑制繁中 Windows（codepage 950）下 CUDA 標頭檔的 C4819 編碼警告。
 
 ### WSL (Ubuntu)
 

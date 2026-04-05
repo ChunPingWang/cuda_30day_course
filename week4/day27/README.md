@@ -149,6 +149,32 @@ result = cuda_module.my_cuda_function(input_tensor)
 2. **pytorch_cuda.py** - PyTorch CUDA 操作
 3. **hybrid_example.py** - 混合 Python/CUDA 應用
 
+## 🔧 編譯與執行
+
+本日為 Python 整合課程，無 CUDA 程式需要編譯。
+
+### 執行 Python 範例
+
+```bash
+python python_cuda.py
+```
+
+### CuPy 快速範例
+
+```python
+import cupy as cp
+import numpy as np
+
+# GPU 陣列運算
+a = cp.random.rand(1000, 1000, dtype=cp.float32)
+b = cp.random.rand(1000, 1000, dtype=cp.float32)
+c = cp.matmul(a, b)
+
+# 與 NumPy 互操作
+result_np = cp.asnumpy(c)
+print(f"結果形狀: {result_np.shape}, 總和: {result_np.sum():.2f}")
+```
+
 ## 📝 今日作業
 
 1. ✅ 安裝 CuPy

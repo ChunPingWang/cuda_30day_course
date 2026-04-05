@@ -165,6 +165,55 @@ CHECK_CUDA(cudaMalloc(&d_array, n * sizeof(float)));
 ### 3. memory_transfer.cu
 測量記憶體傳輸的效能。
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o memory_basics.exe memory_basics.cu
+memory_basics.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o unified_memory.exe unified_memory.cu
+unified_memory.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o memory_basics.exe memory_basics.cu
+.\memory_basics.exe
+
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o unified_memory.exe unified_memory.cu
+.\unified_memory.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o memory_basics memory_basics.cu
+./memory_basics
+
+nvcc -Wno-deprecated-gpu-targets -o unified_memory unified_memory.cu
+./unified_memory
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+import numpy as np
+# 手動記憶體管理
+a_cpu = np.array([1, 2, 3, 4, 5], dtype=np.float32)
+a_gpu = cp.asarray(a_cpu)       # CPU -> GPU
+result = a_gpu * 2
+a_back = cp.asnumpy(result)     # GPU -> CPU
+
+# Unified Memory 概念（CuPy 自動處理）
+x = cp.array([1, 2, 3])        # 自動分配 GPU 記憶體
+```
+
 ## 📝 今日作業
 
 1. ✅ 執行並理解 `memory_basics.cu`

@@ -157,11 +157,46 @@ week3/day21/
 └── Makefile
 ```
 
-## 📝 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o image_processing.exe image_processing.cu
+image_processing.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o image_processing.exe image_processing.cu
+.\image_processing.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc image_processing.cu -o image_process
-./image_process input.jpg output.jpg
+nvcc -Wno-deprecated-gpu-targets -o image_processing image_processing.cu
+./image_processing
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+import numpy as np
+# 模擬灰階影像
+img = cp.random.randint(0, 256, (512, 512), dtype=cp.uint8).astype(cp.float32)
+
+# 高斯模糊（3x3 核心）
+kernel = cp.array([[1,2,1],[2,4,2],[1,2,1]], dtype=cp.float32) / 16
+from cupyx.scipy.ndimage import convolve
+blurred = convolve(img, kernel)
+
+# 亮度調整
+brightened = cp.clip(img * 1.2, 0, 255)
 ```
 
 ## 🎯 效能優化

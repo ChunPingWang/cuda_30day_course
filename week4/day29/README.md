@@ -469,6 +469,10 @@ __global__ void softmaxKernel(float *data, int batch_size, int num_classes) {
 }
 ```
 
+## 🔧 編譯與執行
+
+本日為專題實作，無範例程式需要編譯。
+
 ## 今日作業
 
 1. 完成你選擇專題的核心功能

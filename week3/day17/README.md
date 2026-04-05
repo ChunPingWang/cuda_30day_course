@@ -299,14 +299,40 @@ __global__ void scatter(int *input, int *flags, int *scanResult,
 3. 使用 Scan 實作 Stream Compaction
 4. 比較不同實作的效能
 
-## 編譯與執行
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o scan_basic.exe scan_basic.cu
+scan_basic.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o scan_basic.exe scan_basic.cu
+.\scan_basic.exe
+```
+
+**WSL / Linux：**
 
 ```bash
-nvcc scan_basic.cu -o scan_basic
+nvcc -Wno-deprecated-gpu-targets -o scan_basic scan_basic.cu
 ./scan_basic
+```
 
-nvcc scan_large.cu -o scan_large
-./scan_large
+### Python 等效
+
+```python
+import cupy as cp
+a = cp.array([1, 2, 3, 4, 5], dtype=cp.int32)
+inclusive_scan = cp.cumsum(a)        # [1, 3, 6, 10, 15]
+exclusive_scan = cp.concatenate([cp.array([0]), cp.cumsum(a)[:-1]])  # [0, 1, 3, 6, 10]
+print(f"Inclusive: {inclusive_scan}")
+print(f"Exclusive: {exclusive_scan}")
 ```
 
 ---

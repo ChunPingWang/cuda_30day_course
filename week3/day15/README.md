@@ -124,6 +124,47 @@ __global__ void transpose(float *in, float *out, int N) {
 2. **aos_soa.cu** - AoS vs SoA 比較
 3. **transpose_optimized.cu** - 優化的矩陣轉置
 
+## 🔧 編譯與執行
+
+### CUDA 編譯
+
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o memory_coalescing.exe memory_coalescing.cu
+memory_coalescing.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o memory_coalescing.exe memory_coalescing.cu
+.\memory_coalescing.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o memory_coalescing memory_coalescing.cu
+./memory_coalescing
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+import numpy as np
+n = 1024 * 1024
+# 連續存取（coalesced）
+a = cp.arange(n, dtype=cp.float32)
+result = a * 2  # 連續記憶體存取，效率高
+
+# 跳躍存取（strided, non-coalesced）
+matrix = cp.arange(n, dtype=cp.float32).reshape(1024, 1024)
+col_sum = matrix[:, 0].sum()  # 非連續存取
+row_sum = matrix[0, :].sum()  # 連續存取
+```
+
 ## 📝 今日作業
 
 1. ✅ 理解記憶體合併的原理

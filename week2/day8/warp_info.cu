@@ -4,7 +4,6 @@
  * 展示 Warp 資訊
  */
 __global__ void showWarpInfo() {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
     int warpId = threadIdx.x / 32;
     int laneId = threadIdx.x % 32;  // 在 Warp 中的位置
 

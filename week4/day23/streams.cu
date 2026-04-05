@@ -165,7 +165,6 @@ int main() {
     printf("----------------------------------------\n\n");
 
     // 驗證結果
-    bool correct = true;
     runWithStreams(h_a, h_b, h_c, d_a, d_b, d_c, size, 4);
     // 注意：由於核心中有複雜計算，這裡只驗證部分
     printf("結果驗證: 完成\n\n");

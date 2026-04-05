@@ -165,12 +165,53 @@ void matrixMulCuBLAS(float *A, float *B, float *C, int M, int K, int N) {
 
 ## 🔧 編譯與執行
 
-```bash
-# 編譯（需要連結 cuBLAS）
-nvcc matrix_mul_complete.cu -o matrix_mul_complete -lcublas
+### CUDA 編譯
 
-# 執行
+**Windows（cmd）：**
+
+```cmd
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o matrix_mul_complete.exe matrix_mul_complete.cu
+matrix_mul_complete.exe
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+nvcc -allow-unsupported-compiler -Wno-deprecated-gpu-targets -Xcompiler "/wd4819" -o matrix_mul_complete.exe matrix_mul_complete.cu
+.\matrix_mul_complete.exe
+```
+
+**WSL / Linux：**
+
+```bash
+nvcc -Wno-deprecated-gpu-targets -o matrix_mul_complete matrix_mul_complete.cu
 ./matrix_mul_complete
+```
+
+### Python 等效
+
+```python
+import cupy as cp
+import numpy as np
+import time
+
+n = 1024
+# GPU
+a_gpu = cp.random.rand(n, n, dtype=cp.float32)
+b_gpu = cp.random.rand(n, n, dtype=cp.float32)
+start = cp.cuda.Event(); end = cp.cuda.Event()
+start.record()
+c_gpu = cp.matmul(a_gpu, b_gpu)
+end.record(); end.synchronize()
+gpu_time = cp.cuda.get_elapsed_time(start, end)
+
+# CPU
+a_cpu = cp.asnumpy(a_gpu); b_cpu = cp.asnumpy(b_gpu)
+t = time.time()
+c_cpu = np.matmul(a_cpu, b_cpu)
+cpu_time = (time.time() - t) * 1000
+
+print(f"CPU: {cpu_time:.1f} ms, GPU: {gpu_time:.1f} ms, 加速: {cpu_time/gpu_time:.1f}x")
 ```
 
 ## 📝 本週總結
