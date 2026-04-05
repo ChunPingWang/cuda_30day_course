@@ -2,6 +2,96 @@
 
 歡迎來到 CUDA 程式設計學習之旅！這是一個為期 30 天的完整課程，專為高中生設計。
 
+## NVIDIA 驅動程式安裝與驗證
+
+### Windows 11
+
+**1. 下載並安裝驅動程式：**
+
+前往 [NVIDIA 驅動程式下載頁面](https://www.nvidia.com/Download/index.aspx)，選擇你的 GPU 型號（例如 GeForce RTX 4060 Laptop GPU），下載並安裝最新的 Game Ready 或 Studio 驅動程式。
+
+**2. 驗證安裝：**
+
+開啟 PowerShell 或 Command Prompt：
+
+```cmd
+nvidia-smi
+```
+
+成功會顯示 GPU 名稱、驅動版本、CUDA 版本等資訊，例如：
+
+```
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 571.96         Driver Version: 571.96         CUDA Version: 12.8              |
+| GPU  Name                 ...                                                            |
+|  0   NVIDIA GeForce RTX 4060 Laptop GPU                                                 |
++-----------------------------------------------------------------------------------------+
+```
+
+> 右上角的 **CUDA Version** 代表驅動支援的最高 CUDA 版本，安裝的 CUDA Toolkit 不可超過此版本。
+
+**3. 常見問題：**
+
+- 如果 `nvidia-smi` 找不到指令，確認 `C:\Windows\System32` 在 PATH 中（預設就在）。
+- 如果顯示「No devices found」，請至「裝置管理員 → 顯示卡」確認 GPU 是否正常運作。
+- 安裝驅動後建議重新開機。
+
+### Ubuntu 24.04（WSL2）
+
+WSL2 **不需要**在 Linux 端安裝 NVIDIA 驅動 — GPU 驅動由 Windows 端提供，WSL 會自動使用。
+
+**驗證 GPU 可見：**
+
+```bash
+nvidia-smi
+```
+
+應顯示與 Windows 端相同的 GPU 資訊。如果失敗，請確認：
+
+1. Windows 端驅動已正確安裝（在 PowerShell 中 `nvidia-smi` 可正常執行）。
+2. WSL2 版本為最新：在 PowerShell 中執行 `wsl --update`。
+3. 使用的是 WSL**2**（非 WSL1）：`wsl -l -v` 確認 VERSION 欄為 `2`。
+
+### Ubuntu 24.04（原生安裝）
+
+**1. 安裝驅動程式：**
+
+```bash
+# 更新套件清單
+sudo apt update
+
+# 查看可用的驅動版本
+ubuntu-drivers devices
+
+# 自動安裝推薦的驅動版本
+sudo ubuntu-drivers autoinstall
+
+# 或手動指定版本（例如 570）
+sudo apt install -y nvidia-driver-570
+```
+
+安裝完成後**必須重新開機**：
+
+```bash
+sudo reboot
+```
+
+**2. 驗證安裝：**
+
+```bash
+# 確認驅動載入
+nvidia-smi
+
+# 確認核心模組已載入
+lsmod | grep nvidia
+```
+
+**3. 常見問題：**
+
+- 如果 `nvidia-smi` 顯示「Failed to initialize NVML」，通常是尚未重新開機或 Secure Boot 阻擋了驅動模組。
+- Secure Boot 環境下安裝驅動會要求設定 MOK 密碼，重開機時需在藍色畫面中選擇「Enroll MOK」並輸入該密碼。
+- 若遇到黑畫面，可在 GRUB 選單按 `e` 加入 `nomodeset` 暫時進入系統後排除問題。
+
 ## 課程目標
 
 - 理解 GPU 平行運算的基本概念
