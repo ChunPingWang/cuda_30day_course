@@ -13,8 +13,9 @@
  * - Requires CUDA 6.0+
  */
 
+// 向量加法 kernel：和一般版本完全一樣，kernel 本身不需要知道記憶體是統一記憶體還是傳統記憶體
 __global__ void vectorAdd(float *a, float *b, float *c, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;  // 全域索引
     if (idx < n) {
         c[idx] = a[idx] + b[idx];
     }
@@ -32,6 +33,8 @@ int main() {
     printf("1. Allocate unified memory using cudaMallocManaged\n");
 
     float *a, *b, *c;
+    // cudaMallocManaged：配置「統一記憶體」，CPU 和 GPU 都可以直接存取同一個指標
+    // 不再需要分別 malloc + cudaMalloc，也不需要 cudaMemcpy 手動搬資料
     cudaMallocManaged(&a, bytes);
     cudaMallocManaged(&b, bytes);
     cudaMallocManaged(&c, bytes);
@@ -61,9 +64,11 @@ int main() {
     int threadsPerBlock = 256;
     int blocks = (n + threadsPerBlock - 1) / threadsPerBlock;
 
+    // <<<>>> 啟動 kernel，統一記憶體的指標可以直接傳入
     vectorAdd<<<blocks, threadsPerBlock>>>(a, b, c, n);
 
-    // Important: Wait for GPU to complete
+    // ⚠️ 注意：使用統一記憶體時，一定要先 cudaDeviceSynchronize() 才能在 CPU 讀取結果
+    // 否則 GPU 可能還沒算完，CPU 就去讀取了（會得到錯誤的結果）
     cudaDeviceSynchronize();
 
     printf("   Kernel execution complete!\n\n");
@@ -91,6 +96,7 @@ int main() {
 
     // ========== Free Memory ==========
     printf("6. Free memory\n");
+    // 統一記憶體用 cudaFree 釋放（不需要額外的 free）
     cudaFree(a);
     cudaFree(b);
     cudaFree(c);

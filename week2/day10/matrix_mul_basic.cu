@@ -4,20 +4,24 @@
 #define BLOCK_SIZE 16
 
 /**
- * 矩陣乘法：基本版本
+ * 矩陣乘法：基本版本（每個執行緒計算結果矩陣 C 的一個元素）
  * C = A × B
  * A: M×K, B: K×N, C: M×N
  */
+// __global__ 核心函式，由 CPU 呼叫、GPU 執行
 __global__ void matrixMulBasic(float *A, float *B, float *C,
                                int M, int K, int N) {
+    // 使用 2D 的 Block/Thread 配置來對應矩陣的行與列
+    // blockIdx.y/threadIdx.y 對應列（row），blockIdx.x/threadIdx.x 對應行（col）
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (row < M && col < N) {
+    if (row < M && col < N) {  // ⚠️ 注意：2D 邊界檢查，row 和 col 都要檢查
         float sum = 0.0f;
 
-        // 計算 C[row][col]
+        // 計算 C[row][col] = Σ A[row][k] * B[k][col]（k 從 0 到 K-1）
         for (int k = 0; k < K; k++) {
+            // 1D 陣列模擬 2D 矩陣：mat[i][j] = mat[i * 列數 + j]
             sum += A[row * K + k] * B[k * N + col];
         }
 
@@ -97,20 +101,21 @@ int main() {
     initMatrix(h_A, M, K);
     initMatrix(h_B, K, N);
 
-    // 分配設備記憶體
+    // 分配 GPU（設備）記憶體
     float *d_A, *d_B, *d_C;
-    cudaMalloc(&d_A, bytesA);
+    cudaMalloc(&d_A, bytesA);  // 在 GPU 上分配矩陣 A 的空間
     cudaMalloc(&d_B, bytesB);
     cudaMalloc(&d_C, bytesC);
 
-    // 複製到 GPU
+    // 將矩陣資料從 CPU 複製到 GPU
     cudaMemcpy(d_A, h_A, bytesA, cudaMemcpyHostToDevice);
     cudaMemcpy(d_B, h_B, bytesB, cudaMemcpyHostToDevice);
 
-    // 設定執行配置
-    dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 numBlocks((N + BLOCK_SIZE - 1) / BLOCK_SIZE,
-                   (M + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    // 設定 2D 執行配置（矩陣運算適合用 2D Grid/Block）
+    // dim3 是 CUDA 的三維向量類型，用來指定 Grid 和 Block 的維度
+    dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);  // 每個 Block 有 16×16 = 256 個執行緒
+    dim3 numBlocks((N + BLOCK_SIZE - 1) / BLOCK_SIZE,   // x 方向的 Block 數（對應 col）
+                   (M + BLOCK_SIZE - 1) / BLOCK_SIZE);  // y 方向的 Block 數（對應 row）
 
     printf("執行配置:\n");
     printf("  Block: (%d, %d)\n", threadsPerBlock.x, threadsPerBlock.y);
@@ -125,14 +130,17 @@ int main() {
 
     // GPU 執行
     cudaEventRecord(start);
+    // <<<numBlocks, threadsPerBlock>>> 是 CUDA 的核心函式啟動語法
+    // numBlocks = Grid 大小（幾個 Block），threadsPerBlock = Block 大小（幾個執行緒）
     matrixMulBasic<<<numBlocks, threadsPerBlock>>>(d_A, d_B, d_C, M, K, N);
+    // 💡 Debug 提示：核心啟動是非同步的，如果結果不對，先用 cudaGetLastError() 檢查啟動是否成功
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
 
     float gpuTime;
     cudaEventElapsedTime(&gpuTime, start, stop);
 
-    // 複製結果回 CPU
+    // 將 GPU 計算結果複製回 CPU（cudaMemcpyDeviceToHost = GPU → CPU）
     cudaMemcpy(h_C, d_C, bytesC, cudaMemcpyDeviceToHost);
 
     // CPU 執行（用於驗證）

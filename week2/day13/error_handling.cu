@@ -7,7 +7,9 @@
  * 展示正確的錯誤處理方式
  */
 
-// 錯誤檢查巨集
+// 錯誤檢查巨集：包裝任何 CUDA API 呼叫，自動檢查回傳值
+// 💡 Debug 提示：每個 cudaMalloc / cudaMemcpy / cudaFree 都應該用 CHECK_CUDA 包裝
+// __FILE__ 和 __LINE__ 是編譯器巨集，會自動替換成檔名和行號，方便定位錯誤
 #define CHECK_CUDA(call) do { \
     cudaError_t err = call; \
     if (err != cudaSuccess) { \
@@ -18,7 +20,8 @@
     } \
 } while(0)
 
-// 核心函數錯誤檢查
+// 核心函數錯誤檢查：放在 <<<>>> 啟動之後
+// ⚠️ 注意：核心函式啟動是非同步的，不會回傳錯誤碼，必須用 cudaGetLastError() 檢查
 #define CHECK_KERNEL() do { \
     cudaError_t err = cudaGetLastError(); \
     if (err != cudaSuccess) { \
@@ -31,7 +34,7 @@
 // 正確的核心函數：有邊界檢查
 __global__ void safeKernel(int *data, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {  // 邊界檢查
+    if (idx < n) {  // ⚠️ 注意：邊界檢查是防止越界存取的關鍵，絕對不能省略
         data[idx] = idx * 2;
     }
 }
@@ -39,7 +42,8 @@ __global__ void safeKernel(int *data, int n) {
 // 會觸發錯誤的核心函數（示範用）
 __global__ void unsafeKernel(int *data, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    // 沒有邊界檢查，可能越界
+    // ⚠️ 注意：沒有邊界檢查！當 idx >= n 時會存取到未分配的記憶體
+    // 💡 Debug 提示：可用 compute-sanitizer 工具偵測此類越界錯誤
     data[idx] = idx * 2;
 }
 
@@ -50,9 +54,9 @@ void demonstrateErrorHandling() {
     int *d_data;
     size_t size = n * sizeof(int);
 
-    // 1. 正確使用錯誤檢查
+    // 1. 正確使用錯誤檢查：CHECK_CUDA 會自動處理錯誤
     printf("1. 分配 GPU 記憶體...\n");
-    CHECK_CUDA(cudaMalloc(&d_data, size));
+    CHECK_CUDA(cudaMalloc(&d_data, size));  // 如果分配失敗，會印出錯誤訊息並結束程式
     printf("   成功！\n\n");
 
     // 2. 執行核心函數
@@ -60,9 +64,9 @@ void demonstrateErrorHandling() {
     int threads = 256;
     int blocks = (n + threads - 1) / threads;
 
-    safeKernel<<<blocks, threads>>>(d_data, n);
-    CHECK_KERNEL();
-    CHECK_CUDA(cudaDeviceSynchronize());
+    safeKernel<<<blocks, threads>>>(d_data, n);  // <<<blocks, threads>>> 啟動核心函式
+    CHECK_KERNEL();  // 檢查核心啟動是否成功（例如 threads 是否超過上限）
+    CHECK_CUDA(cudaDeviceSynchronize());  // 等待 GPU 執行完成，同時檢查執行期間的錯誤
     printf("   成功！\n\n");
 
     // 3. 複製結果
@@ -86,9 +90,10 @@ void demonstrateCommonErrors() {
     // 錯誤 1：分配過大的記憶體
     printf("1. 嘗試分配過大的記憶體...\n");
     int *huge_ptr;
-    cudaError_t err = cudaMalloc(&huge_ptr, (size_t)1024 * 1024 * 1024 * 100);  // 100 GB
+    cudaError_t err = cudaMalloc(&huge_ptr, (size_t)1024 * 1024 * 1024 * 100);  // 100 GB，超過 GPU 記憶體
     if (err != cudaSuccess) {
         printf("   預期的錯誤: %s\n\n", cudaGetErrorString(err));
+        // 💡 Debug 提示：CUDA 錯誤會「黏住」，必須用 cudaGetLastError() 清除，否則後續 API 都會失敗
         cudaGetLastError();  // 清除錯誤狀態
     }
 
@@ -97,8 +102,8 @@ void demonstrateCommonErrors() {
     int *d_data;
     cudaMalloc(&d_data, 100 * sizeof(int));
 
-    // 每個 block 最多 1024 個執行緒
-    safeKernel<<<1, 2048>>>(d_data, 100);  // 2048 > 1024
+    // ⚠️ 注意：每個 Block 最多 1024 個執行緒（硬體限制）
+    safeKernel<<<1, 2048>>>(d_data, 100);  // 2048 > 1024，啟動會失敗
     err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("   預期的錯誤: %s\n\n", cudaGetErrorString(err));
@@ -121,11 +126,12 @@ void demonstrateCommonErrors() {
     cudaFree(d_data2);
 }
 
+// 查詢並印出 GPU 硬體資訊（了解硬體限制有助於 debug）
 void printDeviceInfo() {
     printf("=== GPU 資訊 ===\n\n");
 
     int deviceCount;
-    CHECK_CUDA(cudaGetDeviceCount(&deviceCount));
+    CHECK_CUDA(cudaGetDeviceCount(&deviceCount));  // 取得系統中 CUDA 裝置的數量
 
     if (deviceCount == 0) {
         printf("找不到 CUDA 設備！\n");
@@ -133,7 +139,7 @@ void printDeviceInfo() {
     }
 
     for (int i = 0; i < deviceCount; i++) {
-        cudaDeviceProp prop;
+        cudaDeviceProp prop;  // cudaDeviceProp 結構體包含 GPU 所有硬體規格
         CHECK_CUDA(cudaGetDeviceProperties(&prop, i));
 
         printf("設備 %d: %s\n", i, prop.name);

@@ -1,15 +1,16 @@
 #include <stdio.h>
 
 /**
- * Exercise 2: Vector Dot Product
- * result = A[0]*B[0] + A[1]*B[1] + ... + A[n-1]*B[n-1]
+ * 練習 2：向量內積（Dot Product）
+ * 結果 = A[0]*B[0] + A[1]*B[1] + ... + A[n-1]*B[n-1]
  *
- * This is a simplified version:
- * - GPU computes element-wise products
- * - CPU performs final summation
- * (More efficient method will be learned in Week 3: Parallel Reduction)
+ * 簡化版本：
+ * - GPU 負責逐元素相乘（平行計算）
+ * - CPU 負責最後的加總
+ * （第 3 週會學到更有效率的 Parallel Reduction 方法）
  */
 
+// 逐元素相乘的 kernel：c[i] = a[i] * b[i]
 __global__ void elementwiseMultiply(float *a, float *b, float *c, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -26,11 +27,11 @@ int main() {
     const int n = 8;
     size_t bytes = n * sizeof(float);
 
-    // Use unified memory
+    // 使用統一記憶體
     float *a, *b, *c;
-    cudaMallocManaged(&a, bytes);
-    cudaMallocManaged(&b, bytes);
-    cudaMallocManaged(&c, bytes);
+    cudaMallocManaged(&a, bytes);  // A 向量
+    cudaMallocManaged(&b, bytes);  // B 向量
+    cudaMallocManaged(&c, bytes);  // 存放逐元素相乘的結果
 
     // Initialize
     printf("A = [ ");
@@ -47,12 +48,12 @@ int main() {
     }
     printf("]\n\n");
 
-    // GPU: Compute element-wise products
+    // GPU：平行計算逐元素乘積
     int threadsPerBlock = 256;
     int blocks = (n + threadsPerBlock - 1) / threadsPerBlock;
 
     elementwiseMultiply<<<blocks, threadsPerBlock>>>(a, b, c, n);
-    cudaDeviceSynchronize();
+    cudaDeviceSynchronize();  // ⚠️ 注意：一定要等 GPU 算完才能在 CPU 做加總
 
     printf("A * B (element-wise) = [ ");
     for (int i = 0; i < n; i++) {
@@ -60,7 +61,8 @@ int main() {
     }
     printf("]\n\n");
 
-    // CPU: Sum up
+    // CPU：將所有乘積加總得到內積結果
+    // 💡 Debug 提示：這裡的加總是在 CPU 上做的，資料量大時會是效能瓶頸
     float dotProduct = 0.0f;
     for (int i = 0; i < n; i++) {
         dotProduct += c[i];
@@ -82,7 +84,7 @@ int main() {
     printf("Expected result: %.0f\n", expected);
     printf("Result verification: %s\n", (dotProduct == expected) ? "CORRECT" : "ERROR");
 
-    // Free memory
+    // 釋放統一記憶體
     cudaFree(a);
     cudaFree(b);
     cudaFree(c);

@@ -11,35 +11,39 @@
 #define NUM_BINS 256
 #define BLOCK_SIZE 256
 
-// 方法 1：全域記憶體原子操作
+// 方法 1：全域記憶體原子操作（最簡單但最慢）
+// 直方圖：統計每個值出現的次數
 __global__ void histogramGlobal(unsigned char *data, unsigned int *hist, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < n) {
+        // atomicAdd：原子加法，保證多個執行緒同時寫入同一位址時不會遺失資料
+        // ⚠️ 注意：大量執行緒對同一個 bin 做 atomicAdd 會造成嚴重的競爭（contention）
         atomicAdd(&hist[data[idx]], 1);
     }
 }
 
-// 方法 2：共享記憶體優化
+// 方法 2：共享記憶體優化（先在 block 內統計，再合併到全域 → 減少全域原子操作次數）
 __global__ void histogramShared(unsigned char *data, unsigned int *hist, int n) {
+    // 每個 block 有自己的局部直方圖（在共享記憶體中，速度快很多）
     __shared__ unsigned int localHist[NUM_BINS];
 
     int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // 初始化共享記憶體（多個執行緒協作）
+    // 初始化共享記憶體（多個執行緒協作清零，用 stride loop 處理 bins > threads 的情況）
     for (int i = tid; i < NUM_BINS; i += blockDim.x) {
         localHist[i] = 0;
     }
-    __syncthreads();
+    __syncthreads();  // 確保清零完成後才開始統計
 
-    // 累積到局部直方圖
+    // 在共享記憶體中做原子加法（速度比全域記憶體快）
     if (idx < n) {
         atomicAdd(&localHist[data[idx]], 1);
     }
-    __syncthreads();
+    __syncthreads();  // 確保所有執行緒都統計完畢
 
-    // 合併到全域直方圖
+    // 最後才將局部結果合併到全域直方圖（全域 atomicAdd 只執行 NUM_BINS 次而非 n 次）
     for (int i = tid; i < NUM_BINS; i += blockDim.x) {
         if (localHist[i] > 0) {
             atomicAdd(&hist[i], localHist[i]);
@@ -47,22 +51,23 @@ __global__ void histogramShared(unsigned char *data, unsigned int *hist, int n) 
     }
 }
 
-// 方法 3：每個執行緒處理多個元素
-#define COARSE_FACTOR 4
+// 方法 3：粗粒度（Coarsening）— 每個執行緒處理多個元素，進一步減少 block 數量
+#define COARSE_FACTOR 4  // 每個執行緒處理 4 個元素
 
 __global__ void histogramCoarsened(unsigned char *data, unsigned int *hist, int n) {
     __shared__ unsigned int localHist[NUM_BINS];
 
     int tid = threadIdx.x;
+    // 每個執行緒的起始索引間隔 COARSE_FACTOR
     int idx = (blockIdx.x * blockDim.x + tid) * COARSE_FACTOR;
 
-    // 初始化
+    // 初始化局部直方圖
     for (int i = tid; i < NUM_BINS; i += blockDim.x) {
         localHist[i] = 0;
     }
     __syncthreads();
 
-    // 每個執行緒處理 COARSE_FACTOR 個元素
+    // 每個執行緒連續處理 COARSE_FACTOR 個元素 → 減少總 block 數，提升效率
     for (int i = 0; i < COARSE_FACTOR; i++) {
         if (idx + i < n) {
             atomicAdd(&localHist[data[idx + i]], 1);
@@ -70,7 +75,7 @@ __global__ void histogramCoarsened(unsigned char *data, unsigned int *hist, int 
     }
     __syncthreads();
 
-    // 合併
+    // 合併局部結果到全域直方圖
     for (int i = tid; i < NUM_BINS; i += blockDim.x) {
         if (localHist[i] > 0) {
             atomicAdd(&hist[i], localHist[i]);
@@ -158,12 +163,12 @@ int main() {
     // CPU 計算（驗證用）
     histogramCPU(h_data, h_hist, n);
 
-    // 分配設備記憶體
+    // 分配 GPU（設備）記憶體
     unsigned char *d_data;
     unsigned int *d_hist;
-    cudaMalloc(&d_data, n);
-    cudaMalloc(&d_hist, NUM_BINS * sizeof(unsigned int));
-    cudaMemcpy(d_data, h_data, n, cudaMemcpyHostToDevice);
+    cudaMalloc(&d_data, n);                                   // GPU 上的輸入資料
+    cudaMalloc(&d_hist, NUM_BINS * sizeof(unsigned int));     // GPU 上的直方圖結果
+    cudaMemcpy(d_data, h_data, n, cudaMemcpyHostToDevice);   // 將資料從 CPU 複製到 GPU
 
     int blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
 

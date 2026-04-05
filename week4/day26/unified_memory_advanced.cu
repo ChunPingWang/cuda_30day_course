@@ -10,11 +10,12 @@
 
 #define N (1 << 24)  // 16M 元素
 
+// GPU kernel：對每個元素進行數學運算（in-place 修改，結果直接寫回原陣列）
 __global__ void processData(float *data, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x; // 全域執行緒索引
     if (idx < n) {
         float val = data[idx];
-        // 一些計算
+        // 重複計算 10 次，增加 GPU 計算負擔（模擬實際工作量）
         for (int i = 0; i < 10; i++) {
             val = sinf(val) * cosf(val) + sqrtf(fabsf(val));
         }
@@ -23,8 +24,11 @@ __global__ void processData(float *data, int n) {
 }
 
 // 基本 Unified Memory（無優化）
+// Unified Memory 讓 CPU 和 GPU 共用同一個指標，系統自動搬移資料
 float testBasicUM(int n) {
     float *data;
+    // cudaMallocManaged 分配的記憶體，CPU 和 GPU 都能直接存取
+    // 💡 Debug 提示：如果程式 crash 在這行，可能是 GPU 記憶體不足
     cudaMallocManaged(&data, n * sizeof(float));
 
     // CPU 初始化
@@ -39,16 +43,16 @@ float testBasicUM(int n) {
     int threads = 256;
     int blocks = (n + threads - 1) / threads;
 
-    // 暖機
+    // 暖機：第一次使用 Unified Memory 會觸發頁面遷移，先跑一次不計時
     processData<<<blocks, threads>>>(data, n);
-    cudaDeviceSynchronize();
+    cudaDeviceSynchronize(); // 等 GPU 完成
 
-    // 重新初始化
+    // 重新初始化（CPU 寫入 → 資料從 GPU 遷移回 CPU，產生頁面錯誤，有效能開銷）
     for (int i = 0; i < n; i++) {
         data[i] = (float)i / n;
     }
 
-    // 計時
+    // 計時（包含隱含的頁面遷移：資料需從 CPU 搬回 GPU）
     cudaEventRecord(start);
     processData<<<blocks, threads>>>(data, n);
     cudaDeviceSynchronize();
@@ -58,14 +62,14 @@ float testBasicUM(int n) {
     float ms = 0;
     cudaEventElapsedTime(&ms, start, stop);
 
-    cudaFree(data);
+    cudaFree(data); // 釋放 Unified Memory
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
 
     return ms;
 }
 
-// 使用預取優化
+// 使用預取優化：提前告訴系統要把資料搬到哪裡，避免執行時才觸發頁面錯誤
 float testWithPrefetch(int n) {
     float *data;
     cudaMallocManaged(&data, n * sizeof(float));
@@ -83,11 +87,12 @@ float testWithPrefetch(int n) {
     int blocks = (n + threads - 1) / threads;
 
     // 暖機
+    // cudaMemPrefetchAsync 預取資料到 GPU（裝置 0），不等頁面錯誤自動觸發
     cudaMemPrefetchAsync(data, n * sizeof(float), 0, NULL);
     processData<<<blocks, threads>>>(data, n);
     cudaDeviceSynchronize();
 
-    // 預取回 CPU 進行重新初始化
+    // 預取回 CPU 進行重新初始化（cudaCpuDeviceId 代表 CPU 端）
     cudaMemPrefetchAsync(data, n * sizeof(float), cudaCpuDeviceId, NULL);
     cudaDeviceSynchronize();
 
@@ -95,9 +100,9 @@ float testWithPrefetch(int n) {
         data[i] = (float)i / n;
     }
 
-    // 計時（包含預取）
+    // 計時（包含預取時間，但預取比頁面錯誤更有效率）
     cudaEventRecord(start);
-    cudaMemPrefetchAsync(data, n * sizeof(float), 0, NULL);
+    cudaMemPrefetchAsync(data, n * sizeof(float), 0, NULL); // 預取到 GPU
     processData<<<blocks, threads>>>(data, n);
     cudaDeviceSynchronize();
     cudaEventRecord(stop);
@@ -113,13 +118,15 @@ float testWithPrefetch(int n) {
     return ms;
 }
 
-// 使用記憶體提示
+// 使用記憶體提示（Memory Hints）：告訴驅動程式資料的使用模式，讓它做更好的決策
 float testWithHints(int n) {
     float *data;
     cudaMallocManaged(&data, n * sizeof(float));
 
-    // 設定記憶體提示
+    // cudaMemAdvise 設定記憶體使用提示（不是強制的，驅動程式可以忽略）
+    // SetPreferredLocation: 建議資料優先放在 GPU 0 上
     cudaMemAdvise(data, n * sizeof(float), cudaMemAdviseSetPreferredLocation, 0);
+    // SetAccessedBy: 告知 CPU 也會存取這塊記憶體（系統可能會建立映射而非搬移）
     cudaMemAdvise(data, n * sizeof(float), cudaMemAdviseSetAccessedBy, cudaCpuDeviceId);
 
     // CPU 初始化
@@ -138,7 +145,7 @@ float testWithHints(int n) {
     processData<<<blocks, threads>>>(data, n);
     cudaDeviceSynchronize();
 
-    // 重新初始化
+    // 重新初始化（有 SetAccessedBy 提示，CPU 存取可能透過映射而不搬移資料）
     for (int i = 0; i < n; i++) {
         data[i] = (float)i / n;
     }
@@ -160,11 +167,11 @@ float testWithHints(int n) {
     return ms;
 }
 
-// 傳統方式（基準測試）
+// 傳統方式（基準測試）：手動管理 CPU 和 GPU 記憶體，手動 cudaMemcpy
 float testTraditional(int n) {
-    float *h_data = (float*)malloc(n * sizeof(float));
+    float *h_data = (float*)malloc(n * sizeof(float)); // CPU 記憶體
     float *d_data;
-    cudaMalloc(&d_data, n * sizeof(float));
+    cudaMalloc(&d_data, n * sizeof(float)); // GPU 記憶體
 
     // CPU 初始化
     for (int i = 0; i < n; i++) {
@@ -188,11 +195,11 @@ float testTraditional(int n) {
         h_data[i] = (float)i / n;
     }
 
-    // 計時（包含傳輸）
+    // 計時（包含 CPU↔GPU 的來回傳輸）
     cudaEventRecord(start);
-    cudaMemcpy(d_data, h_data, n * sizeof(float), cudaMemcpyHostToDevice);
-    processData<<<blocks, threads>>>(d_data, n);
-    cudaMemcpy(h_data, d_data, n * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(d_data, h_data, n * sizeof(float), cudaMemcpyHostToDevice); // CPU → GPU
+    processData<<<blocks, threads>>>(d_data, n);  // GPU 計算
+    cudaMemcpy(h_data, d_data, n * sizeof(float), cudaMemcpyDeviceToHost); // GPU → CPU
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
 

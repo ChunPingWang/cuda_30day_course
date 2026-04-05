@@ -1,7 +1,8 @@
 #include <stdio.h>
 
 /**
- * Traditional approach: each thread processes one element
+ * 傳統做法：每個執行緒只處理一個元素
+ * 需要啟動足夠多的執行緒來覆蓋所有元素
  */
 __global__ void traditionalProcess(float *arr, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -11,24 +12,27 @@ __global__ void traditionalProcess(float *arr, int n) {
 }
 
 /**
- * Grid-Stride Loop: each thread processes multiple elements
+ * Grid-Stride Loop：每個執行緒用跨步迴圈處理多個元素
+ * 好處：不管資料多大，都可以用固定數量的執行緒處理
  */
 __global__ void gridStrideProcess(float *arr, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = blockDim.x * gridDim.x;  // Total number of threads
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;   // 起始索引
+    // gridDim.x = grid 中有幾個 block
+    int stride = blockDim.x * gridDim.x;  // 跨步大小 = 全部執行緒的總數
 
-    // Each thread processes multiple elements with stride
+    // 每個執行緒從自己的 idx 開始，每次跳 stride 個位置，處理多個元素
+    // 💡 Debug 提示：如果結果有部分元素沒被處理，檢查 stride 的計算是否正確
     for (int i = idx; i < n; i += stride) {
         arr[i] = arr[i] * 2.0f;
     }
 }
 
 /**
- * Show how Grid-Stride Loop works
+ * 視覺化展示 Grid-Stride Loop 的工作方式：印出每個執行緒負責哪些元素
  */
 __global__ void showStridePattern(int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = blockDim.x * gridDim.x;
+    int stride = blockDim.x * gridDim.x;  // 所有執行緒的總數
 
     // Only let first few threads print to avoid too much output
     if (idx < 4) {
@@ -50,15 +54,16 @@ int main() {
 
     // Allocate unified memory
     float *data;
-    cudaMallocManaged(&data, bytes);
+    cudaMallocManaged(&data, bytes);  // 配置統一記憶體
 
     // ========== Demo 1: Show Stride Pattern ==========
     printf("Demo 1: Stride Pattern Visualization\n");
     printf("Config: <<<2, 4>>> (8 threads processing %d elements)\n", n);
     printf("Each thread processes %d elements\n\n", n / 8);
 
+    // <<<2, 4>>> 表示 2 個 block，每個 block 4 個執行緒，共 8 個執行緒
     showStridePattern<<<2, 4>>>(n);
-    cudaDeviceSynchronize();
+    cudaDeviceSynchronize();  // 等待 GPU 完成
 
     // ========== Demo 2: Traditional Approach ==========
     printf("\nDemo 2: Traditional Approach\n");
@@ -90,6 +95,7 @@ int main() {
         data[i] = (float)i;
     }
 
+    // 只用 2 個 block x 256 個執行緒 = 512 個執行緒，就能處理任意大小的陣列
     gridStrideProcess<<<2, 256>>>(data, n);
     cudaDeviceSynchronize();
 

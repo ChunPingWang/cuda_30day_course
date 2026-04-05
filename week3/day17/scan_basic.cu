@@ -9,7 +9,8 @@
 
 #define BLOCK_SIZE 256
 
-// CPU 版本（驗證用）
+// CPU 版本的 Inclusive Scan（驗證 GPU 結果用）
+// Inclusive Scan: output[i] = input[0] + input[1] + ... + input[i]（包含自己）
 void cpuInclusiveScan(int *input, int *output, int n) {
     output[0] = input[0];
     for (int i = 1; i < n; i++) {
@@ -17,50 +18,54 @@ void cpuInclusiveScan(int *input, int *output, int n) {
     }
 }
 
+// CPU 版本的 Exclusive Scan
+// Exclusive Scan: output[i] = input[0] + input[1] + ... + input[i-1]（不包含自己）
 void cpuExclusiveScan(int *input, int *output, int n) {
-    output[0] = 0;
+    output[0] = 0;  // Exclusive Scan 的第一個元素一定是 0（單位元素）
     for (int i = 1; i < n; i++) {
         output[i] = output[i - 1] + input[i - 1];
     }
 }
 
-// Warp 級 Inclusive Scan（使用 shuffle）
+// Warp 級 Inclusive Scan（使用 shuffle 指令）
+// __device__ 表示此函式只能在 GPU 上被其他 GPU 函式呼叫（不能從 CPU 呼叫）
 __device__ int warpInclusiveScan(int val) {
-    int lane = threadIdx.x % 32;
+    int lane = threadIdx.x % 32;  // Warp 內的 lane 編號（0~31），一個 Warp = 32 個執行緒
 
-    // 使用 warp shuffle 進行掃描
+    // __shfl_up_sync：從同 Warp 中前 offset 個 lane 取值（非常快，不需要共享記憶體）
+    // 0xffffffff 表示所有 32 個 lane 都參與
     for (int offset = 1; offset < 32; offset *= 2) {
         int n = __shfl_up_sync(0xffffffff, val, offset);
         if (lane >= offset) {
-            val += n;
+            val += n;  // 累加前面 lane 的值
         }
     }
     return val;
 }
 
-// 單一 Block 的 Inclusive Scan
+// 單一 Block 的 Inclusive Scan（分三步驟：Warp 內掃描 → Warp 間掃描 → 合併）
 __global__ void blockInclusiveScan(int *input, int *output, int n) {
-    __shared__ int warpSums[32];
+    __shared__ int warpSums[32];  // 共享記憶體：儲存每個 Warp 的總和
 
-    int tid = threadIdx.x;
-    int gid = blockIdx.x * blockDim.x + tid;
+    int tid = threadIdx.x;  // 區塊內的執行緒索引
+    int gid = blockIdx.x * blockDim.x + tid;  // 全域索引
 
-    // 載入資料
+    // 步驟 0：載入資料（超出範圍的補 0）
     int val = (gid < n) ? input[gid] : 0;
 
-    // Warp 級掃描
+    // 步驟 1：每個 Warp 內部做 Inclusive Scan
     int warpResult = warpInclusiveScan(val);
 
-    int lane = tid % 32;
-    int warpId = tid / 32;
+    int lane = tid % 32;    // Warp 內的 lane 編號
+    int warpId = tid / 32;  // 第幾個 Warp
 
-    // 儲存每個 Warp 的最後一個值
+    // 每個 Warp 的最後一個 lane（lane 31）持有該 Warp 的總和
     if (lane == 31) {
         warpSums[warpId] = warpResult;
     }
-    __syncthreads();
+    __syncthreads();  // ⚠️ 注意：跨 Warp 溝通必須用 __syncthreads 同步
 
-    // 第一個 Warp 掃描所有 Warp 的總和
+    // 步驟 2：用第一個 Warp 對所有 Warp 的總和做掃描
     if (warpId == 0) {
         int warpSum = (lane < BLOCK_SIZE / 32) ? warpSums[lane] : 0;
         warpSum = warpInclusiveScan(warpSum);
@@ -68,7 +73,7 @@ __global__ void blockInclusiveScan(int *input, int *output, int n) {
     }
     __syncthreads();
 
-    // 加上前面 Warp 的總和
+    // 步驟 3：每個元素加上「前面所有 Warp 的總和」
     if (warpId > 0) {
         warpResult += warpSums[warpId - 1];
     }
@@ -79,7 +84,8 @@ __global__ void blockInclusiveScan(int *input, int *output, int n) {
     }
 }
 
-// Exclusive Scan = Inclusive Scan 右移一位
+// 將 Inclusive Scan 轉換成 Exclusive Scan（整個陣列往右移一格，第一個填 0）
+// 例如 Inclusive=[1,3,6,10] → Exclusive=[0,1,3,6]
 __global__ void inclusiveToExclusive(int *inclusive, int *exclusive, int n) {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -89,6 +95,7 @@ __global__ void inclusiveToExclusive(int *inclusive, int *exclusive, int n) {
 }
 
 // Naive 平行掃描（展示用，效率較低）
+// ⚠️ 注意：這個方法有 race condition 風險（讀寫同一陣列），需要多次呼叫且用雙緩衝才正確
 __global__ void naiveInclusiveScan(int *data, int n, int stride) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -125,12 +132,12 @@ int main() {
     printArray("輸入", h_input, n);
     printf("\n");
 
-    // GPU 記憶體
+    // 分配 GPU 記憶體
     int *d_input, *d_output, *d_exclusive;
-    cudaMalloc(&d_input, n * sizeof(int));
-    cudaMalloc(&d_output, n * sizeof(int));
-    cudaMalloc(&d_exclusive, n * sizeof(int));
-    cudaMemcpy(d_input, h_input, n * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMalloc(&d_input, n * sizeof(int));      // GPU 上的輸入陣列
+    cudaMalloc(&d_output, n * sizeof(int));     // GPU 上的 Inclusive Scan 結果
+    cudaMalloc(&d_exclusive, n * sizeof(int));  // GPU 上的 Exclusive Scan 結果
+    cudaMemcpy(d_input, h_input, n * sizeof(int), cudaMemcpyHostToDevice);  // CPU → GPU
 
     // ========== Inclusive Scan ==========
     printf("【Inclusive Scan】\n");

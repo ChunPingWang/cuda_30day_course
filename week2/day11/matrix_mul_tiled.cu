@@ -5,31 +5,34 @@
 
 /**
  * 矩陣乘法：使用共享記憶體（Tiled）
+ * 核心概念：將大矩陣分成小塊（tile），先載入到快速的共享記憶體中再計算
+ * 共享記憶體比全域記憶體快約 100 倍，可大幅減少記憶體存取延遲
  */
 __global__ void matrixMulTiled(float *A, float *B, float *C,
                                int M, int K, int N) {
-    // 共享記憶體
+    // __shared__ 宣告共享記憶體：同一 Block 內所有執行緒共享，速度極快
+    // ⚠️ 注意：共享記憶體大小有限（通常 48KB），TILE_SIZE 不能設太大
     __shared__ float tileA[TILE_SIZE][TILE_SIZE];
     __shared__ float tileB[TILE_SIZE][TILE_SIZE];
 
-    int row = blockIdx.y * TILE_SIZE + threadIdx.y;
-    int col = blockIdx.x * TILE_SIZE + threadIdx.x;
+    int row = blockIdx.y * TILE_SIZE + threadIdx.y;  // 此執行緒負責的結果矩陣的 row
+    int col = blockIdx.x * TILE_SIZE + threadIdx.x;  // 此執行緒負責的結果矩陣的 col
 
     float sum = 0.0f;
 
-    // 計算需要多少個 tile
+    // 計算需要多少個 tile 來覆蓋 K 維度
     int numTiles = (K + TILE_SIZE - 1) / TILE_SIZE;
 
     for (int t = 0; t < numTiles; t++) {
-        // 載入 A 的 tile
+        // 步驟 1：每個執行緒協作載入一個元素到共享記憶體（A 的 tile）
         int aCol = t * TILE_SIZE + threadIdx.x;
         if (row < M && aCol < K) {
             tileA[threadIdx.y][threadIdx.x] = A[row * K + aCol];
         } else {
-            tileA[threadIdx.y][threadIdx.x] = 0.0f;
+            tileA[threadIdx.y][threadIdx.x] = 0.0f;  // 超出邊界填 0
         }
 
-        // 載入 B 的 tile
+        // 步驟 2：載入 B 的 tile
         int bRow = t * TILE_SIZE + threadIdx.y;
         if (bRow < K && col < N) {
             tileB[threadIdx.y][threadIdx.x] = B[bRow * N + col];
@@ -37,27 +40,29 @@ __global__ void matrixMulTiled(float *A, float *B, float *C,
             tileB[threadIdx.y][threadIdx.x] = 0.0f;
         }
 
-        // 同步：確保 tile 載入完成
+        // __syncthreads() 同步：確保 tile 完全載入後才開始計算
+        // ⚠️ 注意：如果漏掉這行，有些執行緒可能讀到尚未載入的資料，導致結果錯誤
         __syncthreads();
 
-        // 計算這個 tile 的貢獻
-        #pragma unroll
+        // 步驟 3：用共享記憶體中的 tile 做乘加（這裡存取速度快很多）
+        #pragma unroll  // 編譯器提示：展開迴圈以提升效能
         for (int k = 0; k < TILE_SIZE; k++) {
             sum += tileA[threadIdx.y][k] * tileB[k][threadIdx.x];
         }
 
-        // 同步：確保計算完成再載入下一個 tile
+        // 再次同步：確保所有執行緒都算完，才能安全地載入下一個 tile
         __syncthreads();
     }
 
-    // 寫入結果
+    // 寫入結果到全域記憶體
     if (row < M && col < N) {
         C[row * N + col] = sum;
     }
 }
 
 /**
- * 基本版本（用於比較）
+ * 基本版本（用於比較，不使用共享記憶體）
+ * 每次迴圈都從全域記憶體讀取，速度較慢
  */
 __global__ void matrixMulBasic(float *A, float *B, float *C,
                                int M, int K, int N) {
@@ -67,6 +72,7 @@ __global__ void matrixMulBasic(float *A, float *B, float *C,
     if (row < M && col < N) {
         float sum = 0.0f;
         for (int k = 0; k < K; k++) {
+            // 每次迭代都要讀取全域記憶體（慢），這就是 Tiled 版本要優化的地方
             sum += A[row * K + k] * B[k * N + col];
         }
         C[row * N + col] = sum;
@@ -116,8 +122,9 @@ int main() {
         float *h_C_basic = (float*)malloc(bytesC);
         float *h_C_tiled = (float*)malloc(bytesC);
 
+        // 分配 GPU 記憶體
         float *d_A, *d_B, *d_C;
-        cudaMalloc(&d_A, bytesA);
+        cudaMalloc(&d_A, bytesA);  // 在 GPU 上分配空間
         cudaMalloc(&d_B, bytesB);
         cudaMalloc(&d_C, bytesC);
 
@@ -126,9 +133,11 @@ int main() {
         initMatrix(h_A, M * K);
         initMatrix(h_B, K * N);
 
+        // 將資料從 CPU 複製到 GPU
         cudaMemcpy(d_A, h_A, bytesA, cudaMemcpyHostToDevice);
         cudaMemcpy(d_B, h_B, bytesB, cudaMemcpyHostToDevice);
 
+        // 2D 執行配置：Block 大小 = TILE_SIZE × TILE_SIZE
         dim3 threadsPerBlock(TILE_SIZE, TILE_SIZE);
         dim3 numBlocks((N + TILE_SIZE - 1) / TILE_SIZE,
                        (M + TILE_SIZE - 1) / TILE_SIZE);
@@ -161,8 +170,8 @@ int main() {
         // 驗證
         bool correct = verify(h_C_basic, h_C_tiled, M * N);
 
-        // 計算 GFLOPS
-        float operations = 2.0f * M * N * K;  // 乘法 + 加法
+        // 計算 GFLOPS（每秒十億次浮點運算）
+        float operations = 2.0f * M * N * K;  // 每個 C 元素需要 K 次乘法 + K 次加法
         float basicGFlops = operations / (basicTime * 1e6);
         float tiledGFlops = operations / (tiledTime * 1e6);
 

@@ -9,16 +9,18 @@
 
 #define N (1 << 22)  // 4M 元素
 
+// __global__ 標記為 GPU kernel 函式，在 GPU 上平行執行向量加法
 __global__ void vectorAdd(float *a, float *b, float *c, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x; // 計算此執行緒的全域索引
+    if (idx < n) { // ⚠️ 注意：一定要做邊界檢查，因為執行緒總數可能大於 n
         c[idx] = a[idx] + b[idx];
     }
 }
 
+// 查詢系統中所有 GPU 的資訊
 void queryDevices() {
     int deviceCount;
-    cudaGetDeviceCount(&deviceCount);
+    cudaGetDeviceCount(&deviceCount); // 取得系統中 CUDA 裝置的數量
 
     printf("========================================\n");
     printf("    系統 GPU 資訊\n");
@@ -37,7 +39,8 @@ void queryDevices() {
         printf("  每個 Block 最大執行緒數: %d\n", prop.maxThreadsPerBlock);
         printf("  Warp 大小: %d\n", prop.warpSize);
 
-        // 檢查 P2P 支援
+        // 檢查 P2P（Peer-to-Peer）支援：兩個 GPU 能否直接互傳資料，不經過 CPU
+        // 💡 Debug 提示：P2P 通常需要 GPU 在同一個 PCIe 交換器上才能支援
         for (int j = 0; j < deviceCount; j++) {
             if (i != j) {
                 int canAccess;
@@ -49,11 +52,12 @@ void queryDevices() {
     }
 }
 
+// 使用單一 GPU 執行向量加法（作為基準測試）
 float runSingleGPU(float *h_a, float *h_b, float *h_c, int n) {
     float *d_a, *d_b, *d_c;
     int size = n * sizeof(float);
 
-    cudaSetDevice(0);
+    cudaSetDevice(0); // 選擇第 0 號 GPU 作為目前使用的裝置
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
@@ -89,8 +93,10 @@ float runSingleGPU(float *h_a, float *h_b, float *h_c, int n) {
     return ms;
 }
 
+// 使用多個 GPU 平行執行：把資料平均分給每個 GPU
+// ⚠️ 注意：n 必須能被 numGPUs 整除，否則最後一塊資料會被漏掉
 float runMultiGPU(float *h_a, float *h_b, float *h_c, int n, int numGPUs) {
-    int chunkSize = n / numGPUs;
+    int chunkSize = n / numGPUs;    // 每個 GPU 負責的元素數量
     int chunkBytes = chunkSize * sizeof(float);
 
     float **d_a = (float**)malloc(numGPUs * sizeof(float*));
@@ -99,8 +105,9 @@ float runMultiGPU(float *h_a, float *h_b, float *h_c, int n, int numGPUs) {
     cudaStream_t *streams = (cudaStream_t*)malloc(numGPUs * sizeof(cudaStream_t));
 
     // 在每個 GPU 上分配記憶體和創建 stream
+    // ⚠️ 注意：cudaMalloc 會在「目前選定的 GPU」上分配，所以一定要先 cudaSetDevice
     for (int i = 0; i < numGPUs; i++) {
-        cudaSetDevice(i);
+        cudaSetDevice(i); // 切換到第 i 號 GPU
         cudaMalloc(&d_a[i], chunkBytes);
         cudaMalloc(&d_b[i], chunkBytes);
         cudaMalloc(&d_c[i], chunkBytes);
@@ -114,11 +121,12 @@ float runMultiGPU(float *h_a, float *h_b, float *h_c, int n, int numGPUs) {
 
     cudaEventRecord(start);
 
-    // 在每個 GPU 上平行執行
+    // 在每個 GPU 上平行執行：每個 GPU 處理自己負責的那一段資料
     for (int i = 0; i < numGPUs; i++) {
-        cudaSetDevice(i);
+        cudaSetDevice(i); // 切換 GPU，接下來的 CUDA 操作都會在這個 GPU 上執行
         int offset = i * chunkSize;
 
+        // 非同步傳輸：CPU → GPU（不會阻塞 CPU，需要 Pinned Memory）
         cudaMemcpyAsync(d_a[i], h_a + offset, chunkBytes,
                         cudaMemcpyHostToDevice, streams[i]);
         cudaMemcpyAsync(d_b[i], h_b + offset, chunkBytes,
@@ -126,13 +134,16 @@ float runMultiGPU(float *h_a, float *h_b, float *h_c, int n, int numGPUs) {
 
         int threads = 256;
         int blocks = (chunkSize + threads - 1) / threads;
+        // 第四個參數 streams[i] 指定 kernel 在哪個 stream 上執行
         vectorAdd<<<blocks, threads, 0, streams[i]>>>(d_a[i], d_b[i], d_c[i], chunkSize);
 
+        // 非同步傳輸：GPU → CPU
         cudaMemcpyAsync(h_c + offset, d_c[i], chunkBytes,
                         cudaMemcpyDeviceToHost, streams[i]);
     }
 
-    // 同步所有 GPU
+    // 同步所有 GPU：等待每個 GPU 的 stream 都完成
+    // 💡 Debug 提示：如果忘記同步就去讀 h_c，可能拿到不完整的結果
     for (int i = 0; i < numGPUs; i++) {
         cudaSetDevice(i);
         cudaStreamSynchronize(streams[i]);
@@ -176,7 +187,8 @@ int main() {
         return 1;
     }
 
-    // 分配主機記憶體（pinned）
+    // 分配主機記憶體（pinned = 鎖頁記憶體，不會被作業系統換頁）
+    // 多 GPU 的非同步傳輸一定要用 cudaMallocHost，不能用普通的 malloc
     float *h_a, *h_b, *h_c;
     int size = N * sizeof(float);
 

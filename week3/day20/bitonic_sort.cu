@@ -10,24 +10,28 @@
 
 #define BLOCK_SIZE 256
 
-// 全域記憶體版本
+// 全域記憶體版本：Bitonic Sort 的一個步驟
+// 每次呼叫只做一輪「比較並交換」，需要外層迴圈多次呼叫
 __global__ void bitonicSortStep(int *data, int j, int k, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx >= n) return;
 
-    int ixj = idx ^ j;  // XOR 找到配對元素
+    // XOR 運算找到配對的元素索引（Bitonic Sort 的核心配對邏輯）
+    // 💡 Debug 提示：可以印出 idx 和 ixj 觀察配對關係
+    int ixj = idx ^ j;
 
+    // ixj > idx 確保每對只處理一次（避免重複交換）
     if (ixj > idx) {
         if ((idx & k) == 0) {
-            // 升序
+            // 這一段要排成升序
             if (data[idx] > data[ixj]) {
                 int temp = data[idx];
                 data[idx] = data[ixj];
                 data[ixj] = temp;
             }
         } else {
-            // 降序
+            // 這一段要排成降序
             if (data[idx] < data[ixj]) {
                 int temp = data[idx];
                 data[idx] = data[ixj];
@@ -37,21 +41,23 @@ __global__ void bitonicSortStep(int *data, int j, int k, int n) {
     }
 }
 
-// 共享記憶體版本（單一 Block 內排序）
+// 共享記憶體版本（單一 Block 內排序 — 所有比較都在快速的共享記憶體中完成）
 __global__ void bitonicSortShared(int *data, int n) {
-    __shared__ int sdata[BLOCK_SIZE];
+    __shared__ int sdata[BLOCK_SIZE];  // 共享記憶體，block 內的執行緒共用
 
     int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + tid;
 
-    // 載入資料
+    // 載入資料到共享記憶體（超出範圍的填 INT_MAX，排序後會自動到最後面）
     sdata[tid] = (idx < n) ? data[idx] : INT_MAX;
     __syncthreads();
 
-    // Bitonic Sort
+    // Bitonic Sort 主迴圈
+    // k：控制「雙調序列」的長度（2→4→8→...→BLOCK_SIZE）
     for (int k = 2; k <= BLOCK_SIZE; k *= 2) {
+        // j：控制比較的距離（從 k/2 遞減到 1）
         for (int j = k / 2; j > 0; j /= 2) {
-            int ixj = tid ^ j;
+            int ixj = tid ^ j;  // XOR 找配對
 
             if (ixj > tid && ixj < BLOCK_SIZE) {
                 if ((tid & k) == 0) {
@@ -68,11 +74,11 @@ __global__ void bitonicSortShared(int *data, int n) {
                     }
                 }
             }
-            __syncthreads();
+            __syncthreads();  // ⚠️ 注意：每一步都必須同步，否則會讀到未更新的值
         }
     }
 
-    // 寫回
+    // 將排序結果寫回全域記憶體
     if (idx < n) {
         data[idx] = sdata[tid];
     }
@@ -83,13 +89,18 @@ int compare(const void *a, const void *b) {
     return (*(int*)a - *(int*)b);
 }
 
+// 從 CPU 端驅動 Bitonic Sort：反覆啟動 kernel 完成所有步驟
+// ⚠️ 注意：每個 kernel 呼叫只做一步比較交換，所以需要 O(log²n) 次 kernel 啟動
+// 💡 Debug 提示：如果排序結果不正確，先用小陣列（如 n=8）印出每步的中間結果
 void bitonicSortHost(int *d_data, int n) {
     int blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
+    // k：雙調序列長度（2,4,8,...,n）
     for (int k = 2; k <= n; k *= 2) {
+        // j：比較距離（k/2, k/4, ..., 1）
         for (int j = k / 2; j > 0; j /= 2) {
             bitonicSortStep<<<blocks, BLOCK_SIZE>>>(d_data, j, k, n);
-            cudaDeviceSynchronize();
+            cudaDeviceSynchronize();  // 等待 GPU 完成，確保下一步讀到正確的值
         }
     }
 }
@@ -138,8 +149,8 @@ int main() {
     printArray("Before sort", h_small, smallN, 16);
 
     int *d_small;
-    cudaMalloc(&d_small, smallN * sizeof(int));
-    cudaMemcpy(d_small, h_small, smallN * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMalloc(&d_small, smallN * sizeof(int));  // 在 GPU 分配記憶體
+    cudaMemcpy(d_small, h_small, smallN * sizeof(int), cudaMemcpyHostToDevice);  // CPU → GPU
 
     bitonicSortHost(d_small, smallN);
 
@@ -162,7 +173,7 @@ int main() {
     for (int s = 0; s < numSizes; s++) {
         int n = sizes[s];
 
-        // 確保是 2 的冪次
+        // ⚠️ 注意：Bitonic Sort 要求陣列大小必須是 2 的冪次，否則需要補齊
         int *h_data = (int*)malloc(n * sizeof(int));
         int *h_sorted = (int*)malloc(n * sizeof(int));
 

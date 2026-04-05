@@ -11,29 +11,34 @@
 #define N 1000000
 #define FILTER_SIZE 9
 
-// 常數記憶體宣告（64KB 限制）
+// __constant__ 宣告常數記憶體，存放在 GPU 的專用快取中
+// ⚠️ 注意：常數記憶體最大只有 64KB，超過會編譯錯誤
+// 特點：所有執行緒讀取同一位址時，只需一次記憶體存取（廣播機制）
 __constant__ float c_filter[FILTER_SIZE];
 
-// 使用全域記憶體的卷積
+// 使用全域記憶體的 1D 卷積（較慢的版本）
+// 卷積：將濾波器滑過輸入陣列，計算加權總和
 __global__ void convolutionGlobal(float *input, float *output,
                                    float *filter, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;  // 全域執行緒索引
 
     if (idx < n) {
         float sum = 0.0f;
-        int halfSize = FILTER_SIZE / 2;
+        int halfSize = FILTER_SIZE / 2;  // 濾波器的半徑
 
         for (int i = 0; i < FILTER_SIZE; i++) {
             int inputIdx = idx - halfSize + i;
+            // 邊界檢查：避免存取超出陣列範圍
             if (inputIdx >= 0 && inputIdx < n) {
-                sum += input[inputIdx] * filter[i];  // 從全域記憶體讀取
+                sum += input[inputIdx] * filter[i];  // 從全域記憶體讀取 filter（較慢）
             }
         }
         output[idx] = sum;
     }
 }
 
-// 使用常數記憶體的卷積
+// 使用常數記憶體的 1D 卷積（較快的版本）
+// 注意：參數不需要傳入 filter，因為已經存在常數記憶體中
 __global__ void convolutionConstant(float *input, float *output, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -44,7 +49,8 @@ __global__ void convolutionConstant(float *input, float *output, int n) {
         for (int i = 0; i < FILTER_SIZE; i++) {
             int inputIdx = idx - halfSize + i;
             if (inputIdx >= 0 && inputIdx < n) {
-                sum += input[inputIdx] * c_filter[i];  // 從常數記憶體讀取
+                // 從常數記憶體讀取 c_filter → 有快取加速，且所有執行緒讀同一個 i 時會廣播
+                sum += input[inputIdx] * c_filter[i];
             }
         }
         output[idx] = sum;
@@ -123,7 +129,8 @@ int main() {
     printf("濾波器大小: %d\n", FILTER_SIZE);
     printf("資料大小: %d 個元素\n\n", N);
 
-    // 複製濾波器到常數記憶體
+    // 用 cudaMemcpyToSymbol 將濾波器複製到常數記憶體
+    // ⚠️ 注意：不能用 cudaMemcpy，必須用 cudaMemcpyToSymbol 才能寫入 __constant__ 變數
     cudaMemcpyToSymbol(c_filter, h_filter, FILTER_SIZE * sizeof(float));
 
     // 分配記憶體
@@ -136,13 +143,13 @@ int main() {
         h_input[i] = (float)(rand() % 100) / 100.0f;
     }
 
-    // GPU 記憶體
+    // GPU 全域記憶體分配
     float *d_input, *d_output, *d_filter;
-    cudaMalloc(&d_input, N * sizeof(float));
-    cudaMalloc(&d_output, N * sizeof(float));
-    cudaMalloc(&d_filter, FILTER_SIZE * sizeof(float));
+    cudaMalloc(&d_input, N * sizeof(float));              // 輸入資料
+    cudaMalloc(&d_output, N * sizeof(float));             // 輸出結果
+    cudaMalloc(&d_filter, FILTER_SIZE * sizeof(float));   // 全域記憶體版的 filter（對比用）
 
-    // 複製資料
+    // 將資料從 CPU（Host）複製到 GPU（Device）
     cudaMemcpy(d_input, h_input, N * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_filter, h_filter, FILTER_SIZE * sizeof(float), cudaMemcpyHostToDevice);
 
@@ -172,9 +179,10 @@ int main() {
     convolutionConstant<<<blocks, threadsPerBlock>>>(d_input, d_output, N);
     cudaMemcpy(h_output_constant, d_output, N * sizeof(float), cudaMemcpyDeviceToHost);
 
-    // 比較結果
+    // 比較兩種方法的結果是否一致
     bool correct = true;
     for (int i = 0; i < N; i++) {
+        // 💡 Debug 提示：浮點數比較要用容差（epsilon），不能用 ==
         if (fabsf(h_output_global[i] - h_output_constant[i]) > 1e-5) {
             correct = false;
             break;

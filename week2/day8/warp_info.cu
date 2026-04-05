@@ -2,13 +2,18 @@
 
 /**
  * 展示 Warp 資訊
+ * 每個 Warp 包含 32 個執行緒，是 GPU 排程的最小單位
  */
+// __global__ 表示這是一個 GPU 核心函式，由 CPU 端呼叫、在 GPU 上執行
 __global__ void showWarpInfo() {
-    int warpId = threadIdx.x / 32;
-    int laneId = threadIdx.x % 32;  // 在 Warp 中的位置
+    // threadIdx.x 是執行緒在 Block 內的索引（從 0 開始）
+    int warpId = threadIdx.x / 32;   // 每 32 個執行緒組成一個 Warp
+    int laneId = threadIdx.x % 32;   // Lane ID：執行緒在 Warp 中的位置（0~31）
 
-    // 只讓每個 Warp 的第一個執行緒輸出
+    // 只讓每個 Warp 的第一個執行緒（lane 0）輸出，避免重複列印
     if (laneId == 0) {
+        // blockIdx.x 是此 Block 在 Grid 中的索引
+        // blockDim.x 是每個 Block 的執行緒數量
         printf("Block %d, Warp %d (threads %d-%d)\n",
                blockIdx.x, warpId,
                blockIdx.x * blockDim.x + warpId * 32,
@@ -17,9 +22,11 @@ __global__ void showWarpInfo() {
 }
 
 /**
- * 展示所有執行緒的 Warp 資訊
+ * 展示所有執行緒的 Warp 資訊（詳細版本）
+ * 每個執行緒都會印出自己的位置資訊
  */
 __global__ void showDetailedWarpInfo() {
+    // 計算全域索引：Block 編號 × 每個 Block 的大小 + Block 內的執行緒編號
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     int warpId = threadIdx.x / 32;
     int laneId = threadIdx.x % 32;
@@ -38,7 +45,9 @@ int main() {
     printf("配置: <<<2, 64>>>\n");
     printf("每個 Block 有 64/32 = 2 個 Warp\n");
     printf("----------------------------------------\n");
+    // <<<2, 64>>> 表示啟動 2 個 Block，每個 Block 有 64 個執行緒
     showWarpInfo<<<2, 64>>>();
+    // cudaDeviceSynchronize() 讓 CPU 等待 GPU 所有工作完成
     cudaDeviceSynchronize();
 
     // 示範 2：Block 大小 = 128（4 個 Warp）
@@ -55,6 +64,7 @@ int main() {
     printf("需要 ceil(100/32) = 4 個 Warp\n");
     printf("最後一個 Warp 只有 100-96 = 4 個活躍執行緒\n");
     printf("----------------------------------------\n");
+    // ⚠️ 注意：Block 大小不是 32 的倍數時，最後一個 Warp 會有閒置的執行緒，浪費 GPU 資源
     showWarpInfo<<<1, 100>>>();
     cudaDeviceSynchronize();
 

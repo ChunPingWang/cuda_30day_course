@@ -3,15 +3,15 @@
 #include <float.h>
 
 /**
- * Exercise 4: Find Maximum Value in Array
+ * 練習 4：找出陣列中的最大值
  *
- * This is a simplified version:
- * - Divide array into segments
- * - Each Block finds the maximum of its segment
- * - CPU finds maximum among all segment maximums
+ * 簡化版本的做法：
+ * - 將陣列分成多個區段
+ * - 每個 Block 找出自己區段的最大值
+ * - CPU 再從所有區段最大值中找出全域最大值
  *
- * This is not the most efficient method (Parallel Reduction in Week 3)
- * but it demonstrates the basic concept
+ * 這不是最有效率的做法（第 3 週會學 Parallel Reduction）
+ * 但展示了 GPU/CPU 混合計算的基本概念
  */
 
 #define THREADS_PER_BLOCK 256
@@ -24,13 +24,13 @@ int main() {
     const int n = 1000;
     size_t bytes = n * sizeof(float);
 
-    // Use unified memory
+    // 使用統一記憶體
     float *data;
     cudaMallocManaged(&data, bytes);
 
-    // Initialize random data
-    srand(42);  // Fixed seed for reproducibility
-    float cpuMax = -FLT_MAX;
+    // 初始化隨機資料
+    srand(42);  // 固定亂數種子，確保每次執行結果相同（方便 debug）
+    float cpuMax = -FLT_MAX;  // FLT_MAX 是 float 的最大值，取負號作為初始最小值
     int maxIndex = 0;
 
     printf("Generating %d random numbers...\n", n);
@@ -55,18 +55,18 @@ int main() {
     int blocks = (n + threadsPerBlock - 1) / threadsPerBlock;
 
     float *blockMaxes;
-    cudaMallocManaged(&blockMaxes, blocks * sizeof(float));
+    cudaMallocManaged(&blockMaxes, blocks * sizeof(float));  // 儲存每個 block 的區域最大值
 
-    // Initialize blockMaxes
+    // 初始化每個 block 的最大值為最小值
     for (int i = 0; i < blocks; i++) {
         blockMaxes[i] = -FLT_MAX;
     }
 
-    // Each block processes a portion
-    // Simplified version: we compare directly on CPU
+    // 💡 Debug 提示：這個簡化版本其實是在 CPU 上做分段搜尋，模擬 GPU block 的行為
+    // 真正的 GPU 平行版本會在第 3 週學到
     cudaDeviceSynchronize();
 
-    // Find max for each block
+    // 模擬每個 block 找自己區段的最大值
     for (int b = 0; b < blocks; b++) {
         int start = b * threadsPerBlock;
         int end = start + threadsPerBlock;
@@ -80,7 +80,7 @@ int main() {
         blockMaxes[b] = localMax;
     }
 
-    // Find maximum among all block maxes
+    // 從所有區段最大值中，找出全域最大值
     float gpuMax = -FLT_MAX;
     for (int i = 0; i < blocks; i++) {
         if (blockMaxes[i] > gpuMax) {
@@ -93,7 +93,7 @@ int main() {
     printf("  GPU computed max: %.2f\n", gpuMax);
     printf("  Result verification: %s\n\n", (cpuMax == gpuMax) ? "CORRECT" : "ERROR");
 
-    // Free memory
+    // 釋放統一記憶體
     cudaFree(data);
     cudaFree(blockMaxes);
 
